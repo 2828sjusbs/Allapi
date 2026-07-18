@@ -15,12 +15,8 @@ const OWNER = '@sahilxalone';
 const CHANNEL = '@OSINTNXERA';
 
 const MASTER_KEYS = {
-    subhxco: 'RACKSUN',
     ftosint: 'sahil-new',
-    ayaanmods: 'annonymousai',
-    truecallerLeak: 'RATELIMITE-BEIBBkim7bjTAkJIZTIUGPR4FkfNAYoj',
-    mistral: 'FVKec5Xqa2ORzSoBrqi21nRbIM6rFk2q',
-    rogers: 'Rogers2'
+    mistral: 'FVKec5Xqa2ORzSoBrqi21nRbIM6rFk2q'
 };
 
 const dataDir = path.join(__dirname, 'data');
@@ -181,21 +177,23 @@ function requireHeadAdmin(req, res, next) {
     next();
 }
 
+// ============ UPDATED API PROXY MAP ============
 const apiProxyMap = {
-    'vehicle-info': (p) => `http://104.248.231.22:5000/challan/${p.vehicle || p.q || p.term}`,
-    'telegram-num': (p) => `https://telegram-to-num-gray.vercel.app/sms?key=PRIME&term=${p.term || p.id || p.username}`,
-    'family-info': (p) => `https://ayush-multi-apiv2.onrender.com/adhar?q=${p.q || p.term || p.id}`,
-    'number-info': (p) => `https://believes-shore-funny-void.trycloudflare.com/search?q=${p.q || p.number || p.num}`,
-    'aadhar-info': (p) => `https://believes-shore-funny-void.trycloudflare.com/search?q=${p.q || p.num || p.aadhar}`,
-    'num-newinfo': (p) => `https://ayush-multi-apiv2.onrender.com/num?q=${p.q || p.number || p.num}`,
-    'email-info': (p) => `https://believes-shore-funny-void.trycloudflare.com/search?q=${p.q || p.email}`,
+    'vehicle-info': (p) => `http://172.104.161.81:7790/api/vehicle/${p.vehicle || p.q || p.term}`,
+    'telegram-num': (p) => `https://tg-to-num-501x.onrender.com/api/tg?key=permanant&info=${p.term || p.id || p.username}`,
+    'family-info': (p) => `https://osint.invalidayushh.workers.dev/adhar?key=Sahil&q=${p.q || p.term || p.id}`,
+    'number-info': (p) => `https://osint.invalidayushh.workers.dev/num?key=Sahil&q=${p.q || p.number || p.num}`,
+    'aadhar-info': (p) => `https://osint.invalidayushh.workers.dev/adhar?key=Sahil&q=${p.q || p.num || p.aadhar}`,
+    'num-newinfo': (p) => `https://ft-osint-api.duckdns.org/api/number?key=${MASTER_KEYS.ftosint}&num=${p.q || p.number || p.num}`,
+    'email-info': (p) => `https://osint.invalidayushh.workers.dev/email?key=Sahil&q=${p.q || p.email}`,
+    'insta': (p) => `https://osint.invalidayushh.workers.dev/insta?key=Sahil&q=${p.username}`,
+    'vehicle': (p) => `https://osint.invalidayushh.workers.dev/veh?key=Sahil&q=${p.vehicle}`,
     'family': (p) => `https://ayaanmods.site/family.php?key=${MASTER_KEYS.subhxco}&term=${p.term}`,
     'num-india': (p) => `https://ft-osint-api.duckdns.org/api/number?key=${MASTER_KEYS.ftosint}&num=${p.num}`,
     'num-pak': (p) => `https://ft-osint-api.duckdns.org/api/pk?key=${MASTER_KEYS.ftosint}&number=${p.number}`,
     'name-details': (p) => `https://ft-osint-api.duckdns.org/api/name?key=${MASTER_KEYS.ftosint}&name=${p.name}`,
     'bank': (p) => `https://ft-osint-api.duckdns.org/api/ifsc?key=${MASTER_KEYS.ftosint}&ifsc=${p.ifsc}`,
     'pan': (p) => `https://ft-osint-api.duckdns.org/api/pan?key=${MASTER_KEYS.ftosint}&pan=${p.pan}`,
-    'vehicle': (p) => `https://ft-osint-api.duckdns.org/api/vehicle?key=${MASTER_KEYS.ftosint}&vehicle=${p.vehicle}`,
     'rc': (p) => `https://ft-osint-api.duckdns.org/api/rc?key=${MASTER_KEYS.ftosint}&owner=${p.owner}`,
     'ip': (p) => `https://ft-osint-api.duckdns.org/api/ip?key=${MASTER_KEYS.ftosint}&ip=${p.ip}`,
     'pincode': (p) => `https://ft-osint-api.duckdns.org/api/pincode?key=${MASTER_KEYS.ftosint}&pin=${p.pin}`,
@@ -204,24 +202,52 @@ const apiProxyMap = {
     'ff': (p) => `https://ft-osint-api.duckdns.org/api/ff?key=${MASTER_KEYS.ftosint}&uid=${p.uid}`,
     'aadhar': (p) => `https://ft-osint-api.duckdns.org/api/aadhar?key=${MASTER_KEYS.ftosint}&num=${p.num}`,
     'ai-image': (p) => `https://ayaanmods.site/aiimage.php?key=${MASTER_KEYS.ayaanmods}&prompt=${p.prompt}`,
-    'insta': (p) => `https://ft-osint-api.duckdns.org/api/insta?key=${MASTER_KEYS.ftosint}&username=${p.username}`,
     'num-fullinfo': (p) => `https://say-wallahai-bro-say-wallahi.onrender.com/raavan/v34/query=${p.number}/key=${MASTER_KEYS.truecallerLeak}`,
     'mistral': `mistral-direct`,
     'veh-to-num': (p) => `https://vehicleinfo.noobgamingv40.workers.dev/fetch?vehicle=${p.vehicle || p.term}`
 };
 
+// ============ UPDATED CLEAN FUNCTION ============
 function cleanResponseData(data) {
     if (!data || typeof data !== 'object') return data;
     let cleaned = JSON.parse(JSON.stringify(data));
-    const removeFields = ['Developer', 'DM TO BUY ACCESS', 'owner', 'xtradeep', 'Kon_Hu_Mai', 'channel', 'telegram', 'contact', 'instagram', 'twitter', 'fb', 'facebook', 'website', 'github', 'created_by', 'owner_username', 'owner_channel', 'credit', 'Credits', 'Credit', 'Source', 'source', 'provider', 'Provider', 'api_source', 'API_Source'];
+    
+    const removeFields = [
+        // Owner/Channel fields
+        'owner', 'OWNER', 'channel', 'CHANNEL',
+        'telegram', 'contact', 'instagram', 'twitter', 'fb', 'facebook',
+        'website', 'github', 'created_by', 'createdBy', 'owner_username', 'owner_channel',
+        
+        // Credit/Source fields
+        'credit', 'Credits', 'Credit', 'Source', 'source', 'provider', 'Provider',
+        'api_source', 'API_Source', 'developer', 'Developer', 'dev', 'Dev',
+        
+        // Developer names to remove
+        'invalidayushh', 'ftgamerv2', 'ftgamer2', 
+        '@invalidayushh', '@ftgamerv2', '@ftgamer2',
+        'InvalidAyush', '@InvalidAyush', 'invalidayush', '@invalidayush',
+        
+        // Common spam fields
+        'DM TO BUY ACCESS', 'xtradeep', 'Kon_Hu_Mai',
+        'support', 'Support', 'help', 'Help'
+    ];
     
     function cleanObject(obj) {
         if (!obj || typeof obj !== 'object') return;
         for (let key in obj) {
-            if (removeFields.includes(key.toLowerCase()) || removeFields.includes(key)) {
+            // Remove by key name
+            if (removeFields.includes(key) || removeFields.includes(key.toLowerCase())) {
                 delete obj[key];
-            } else if (typeof obj[key] === 'string') {
-                if (obj[key].includes('@') && !obj[key].includes('Max_aura_need') && !obj[key].includes('OSINTNXERA')) {
+            } 
+            // Remove by value containing developer names
+            else if (typeof obj[key] === 'string') {
+                if (obj[key].includes('InvalidAyush') || 
+                    obj[key].includes('@InvalidAyush') ||
+                    obj[key].includes('invalidayush') ||
+                    obj[key].includes('ftgamerv2') || 
+                    obj[key].includes('ftgamer2') ||
+                    obj[key].includes('@ftgamerv2') || 
+                    obj[key].includes('@ftgamer2')) {
                     delete obj[key];
                 }
             } else if (typeof obj[key] === 'object') {
@@ -230,10 +256,14 @@ function cleanResponseData(data) {
         }
     }
     cleanObject(cleaned);
+    
+    // Add YOUR owner info
     cleaned.owner = OWNER;
     cleaned.channel = CHANNEL;
     return cleaned;
 }
+
+// ============ ROUTES ============
 
 app.get('/', (req, res) => {
     db.get('SELECT COUNT(*) as total_apis FROM available_apis', [], (err, apisCount) => {
@@ -364,15 +394,18 @@ app.get('/admin/dashboard', requireAuth, (req, res) => {
     });
 });
 
-// ========== FIXED: CUSTOM KEY GENERATION ==========
+// ============ FIXED: CUSTOM KEY GENERATION ============
 app.post('/admin/generate-key', requireAuth, (req, res) => {
     const { name, expiry, unlimited_hits, allowed_apis, custom_key, 
             rate_limit_enabled, rate_limit_per_day, rate_limit_per_hour, rate_limit_per_minute } = req.body;
     
-    // FIX: Check if checkbox is checked
-    const isCustomEnabled = req.body.enable_custom === 'on';
+    const isCustomEnabled = req.body.enable_custom === 'on' || req.body.enable_custom === true;
     
     console.log('📝 Generating key - Custom enabled:', isCustomEnabled, 'Custom key:', custom_key);
+    
+    if (isCustomEnabled && (!custom_key || custom_key.trim() === '')) {
+        return res.status(400).send('❌ Please enter a custom key or disable custom key option');
+    }
     
     function createKey(apiKey, isCustom) {
         let expires_at = null;
@@ -382,7 +415,6 @@ app.post('/admin/generate-key', requireAuth, (req, res) => {
         else if (expiry === '1m') expires_at = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
         else if (expiry === '1y') expires_at = new Date(now.getTime() + (365 * 24 * 60 * 60 * 1000));
         
-        // FIX: Handle allowed_apis - if it's an array, join it; if it's a string, use as is
         let allowedApisJson = '["all"]';
         if (allowed_apis) {
             if (Array.isArray(allowed_apis)) {
@@ -391,13 +423,14 @@ app.post('/admin/generate-key', requireAuth, (req, res) => {
                 if (allowed_apis === 'all') {
                     allowedApisJson = '["all"]';
                 } else {
-                    allowedApisJson = JSON.stringify(allowed_apis.split(','));
+                    const apiArray = allowed_apis.split(',').map(api => api.trim()).filter(api => api);
+                    allowedApisJson = JSON.stringify(apiArray);
                 }
             }
         }
         
         const isUnlimited = unlimited_hits === 'true' || unlimited_hits === 'on';
-        const rateLimitEnabled = isUnlimited ? 0 : (rate_limit_enabled === 'on' ? 1 : 0);
+        const rateLimitEnabled = isUnlimited ? 0 : (rate_limit_enabled === 'on' || rate_limit_enabled === 'true' ? 1 : 0);
         
         db.run(`INSERT INTO api_keys (key, name, owner_username, owner_channel, expires_at, unlimited_hits, allowed_apis, status, is_custom,
                 rate_limit_enabled, rate_limit_per_day, rate_limit_per_hour, rate_limit_per_minute)
@@ -418,18 +451,14 @@ app.post('/admin/generate-key', requireAuth, (req, res) => {
                 });
     }
     
-    // Check if custom key is enabled
     if (isCustomEnabled && custom_key && custom_key.trim() !== '') {
         let apiKey = custom_key.trim().toUpperCase();
-        
-        // Remove spaces and special characters, keep letters, numbers, underscore
         apiKey = apiKey.replace(/[^A-Z0-9_]/g, '');
         
         if (apiKey.length < 3) {
             return res.status(400).send('❌ Custom key must be at least 3 characters');
         }
         
-        // Check if key already exists
         db.get('SELECT key FROM api_keys WHERE key = ?', [apiKey], (err, existing) => {
             if (err) {
                 return res.status(500).send('Database error');
@@ -440,7 +469,6 @@ app.post('/admin/generate-key', requireAuth, (req, res) => {
             createKey(apiKey, true);
         });
     } else {
-        // Generate random key
         let apiKey = 'OSINT_' + Math.random().toString(36).substring(2, 18).toUpperCase();
         createKey(apiKey, false);
     }
@@ -561,6 +589,7 @@ app.listen(PORT, () => {
     console.log(`✅ Owner: ${OWNER}`);
     console.log(`✅ Channel: ${CHANNEL}`);
     console.log('✅ Custom keys working!');
+    console.log('✅ All APIs updated!');
     console.log('=====================================\n');
 });
 
