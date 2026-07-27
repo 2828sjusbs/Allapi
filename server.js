@@ -57,8 +57,16 @@ db.serialize(() => {
         rate_limit_per_minute INTEGER DEFAULT 5,
         key_note TEXT DEFAULT '',
         note_enabled INTEGER DEFAULT 0,
-        last_updated DATETIME
+        last_updated DATETIME,
+        api_enabled INTEGER DEFAULT 1
     )`);
+
+    // Add api_enabled column if it doesn't exist
+    db.run(`ALTER TABLE api_keys ADD COLUMN api_enabled INTEGER DEFAULT 1`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+            // Column might already exist, ignore error
+        }
+    });
 
     // Rate limit tracking
     db.run(`CREATE TABLE IF NOT EXISTS rate_limit_tracking (
@@ -101,18 +109,22 @@ db.serialize(() => {
         is_active INTEGER DEFAULT 1
     )`);
 
-    // Settings table
+    // Settings table - removed master_api column
     db.run(`CREATE TABLE IF NOT EXISTS settings (
         id INTEGER PRIMARY KEY,
-        master_api INTEGER DEFAULT 1,
         maintenance_message TEXT DEFAULT 'API is currently under maintenance.'
     )`);
 
     // Insert default settings if not exists
     db.get(`SELECT * FROM settings WHERE id = 1`, [], (err, row) => {
         if (!row) {
-            db.run(`INSERT INTO settings (id, master_api, maintenance_message) VALUES (1, 1, 'API is currently under maintenance.')`);
+            db.run(`INSERT INTO settings (id, maintenance_message) VALUES (1, 'API is currently under maintenance.')`);
         }
+    });
+
+    // Update settings table - remove master_api column if it exists
+    db.run(`ALTER TABLE settings DROP COLUMN master_api`, (err) => {
+        // Ignore error if column doesn't exist
     });
 
     // Default users
@@ -132,6 +144,9 @@ db.serialize(() => {
 
     // Update owner info
     db.run(`UPDATE api_keys SET owner_username = ?, owner_channel = ?`, [OWNER, CHANNEL]);
+
+    // Set default api_enabled for existing keys
+    db.run(`UPDATE api_keys SET api_enabled = 1 WHERE api_enabled IS NULL`);
 
     // Insert default APIs if empty
     db.get(`SELECT COUNT(*) as count FROM available_apis`, [], (err, row) => {
@@ -279,19 +294,6 @@ function cleanResponseData(data) {
     return cleaned;
 }
 
-// ============ MASTER API CHECK FUNCTION ============
-function checkMasterApi() {
-    return new Promise((resolve) => {
-        db.get('SELECT master_api, maintenance_message FROM settings WHERE id = 1', [], (err, row) => {
-            if (err || !row) {
-                resolve({ master_api: 1, maintenance_message: 'API is currently under maintenance.' });
-            } else {
-                resolve(row);
-            }
-        });
-    });
-}
-
 // ============ ROUTES ============
 
 app.get('/', (req, res) => {
@@ -387,7 +389,7 @@ app.get('/head-admin/dashboard', requireHeadAdmin, (req, res) => {
                             popular: [],
                             topUsers: [],
                             todayCalls: {},
-                            settings: settings || { master_api: 1, maintenance_message: 'API is currently under maintenance.' },
+                            settings: settings || { maintenance_message: 'API is currently under maintenance.' },
                             apis: apis || [],
                             owner: OWNER,
                             channel: CHANNEL
@@ -423,7 +425,7 @@ app.get('/admin/dashboard', requireAuth, (req, res) => {
                             todayCalls: {},
                             user: req.session.user,
                             baseUrl: req.protocol + '://' + req.get('host'),
-                            settings: settings || { master_api: 1, maintenance_message: 'API is currently under maintenance.' },
+                            settings: settings || { maintenance_message: 'API is currently under maintenance.' },
                             owner: OWNER,
                             channel: CHANNEL
                         });
@@ -499,8 +501,8 @@ app.post('/admin/generate-key', requireAuth, (req, res) => {
                 key, name, owner_username, owner_channel, 
                 expires_at, unlimited_hits, allowed_apis, status, is_custom,
                 rate_limit_enabled, rate_limit_per_day, rate_limit_per_hour, rate_limit_per_minute,
-                key_note, note_enabled, last_updated
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?)`, 
+                key_note, note_enabled, last_updated, api_enabled
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, 1)`, 
             [
                 apiKey, name, OWNER, CHANNEL, 
                 expires_at, 
@@ -548,13 +550,41 @@ app.post('/admin/generate-key', requireAuth, (req, res) => {
     }
 });
 
+// ============ TOGGLE API KEY ENABLED ============
+app.post('/admin/toggle-key-enabled', requireAuth, (req, res) => {
+    const { key_id, api_enabled } = req.body;
+    
+    if (!key_id) {
+        return res.status(400).json({ error: 'Key ID required' });
+    }
+    
+    const enabled = api_enabled === 'true' || api_enabled === 1 || api_enabled === '1' ? 1 : 0;
+    
+    db.run(
+        'UPDATE api_keys SET api_enabled = ?, last_updated = ? WHERE id = ?',
+        [enabled, new Date().toISOString(), key_id],
+        function(err) {
+            if (err) {
+                console.error('❌ Error toggling key:', err);
+                return res.status(500).json({ error: 'Failed to toggle key' });
+            }
+            res.json({ 
+                success: true, 
+                api_enabled: enabled,
+                message: enabled ? 'Key enabled' : 'Key disabled'
+            });
+        }
+    );
+});
+
 // ============ EDIT KEY ============
 app.post('/admin/edit-key', requireAuth, (req, res) => {
     const { 
         key_id, name, expiry, unlimited_hits, 
         rate_limit_enabled, rate_limit_per_day, rate_limit_per_hour, rate_limit_per_minute,
         note_enabled, key_note, status,
-        selected_apis, custom_expiry_date, custom_expiry_time
+        selected_apis, custom_expiry_date, custom_expiry_time,
+        api_enabled
     } = req.body;
 
     let expires_at = null;
@@ -586,6 +616,7 @@ app.post('/admin/edit-key', requireAuth, (req, res) => {
     const rateLimitEnabled = isUnlimited ? 0 : (rate_limit_enabled === 'on' || rate_limit_enabled === 'true' ? 1 : 0);
     const noteEnabled = note_enabled === 'on' || note_enabled === 'true' ? 1 : 0;
     const noteText = noteEnabled ? (key_note || '') : '';
+    const enabled = api_enabled === 'true' || api_enabled === 1 || api_enabled === '1' ? 1 : 0;
 
     const updateFields = [];
     const updateValues = [];
@@ -601,6 +632,7 @@ app.post('/admin/edit-key', requireAuth, (req, res) => {
     if (rate_limit_per_hour !== undefined) { updateFields.push('rate_limit_per_hour = ?'); updateValues.push(parseInt(rate_limit_per_hour) || 20); }
     if (rate_limit_per_minute !== undefined) { updateFields.push('rate_limit_per_minute = ?'); updateValues.push(parseInt(rate_limit_per_minute) || 5); }
     if (status !== undefined) { updateFields.push('status = ?'); updateValues.push(status); }
+    if (enabled !== undefined) { updateFields.push('api_enabled = ?'); updateValues.push(enabled); }
     
     updateFields.push('last_updated = ?');
     updateValues.push(new Date().toISOString());
@@ -628,19 +660,18 @@ app.post('/admin/toggle-status', requireAuth, (req, res) => {
     res.redirect('/admin/dashboard');
 });
 
-// ============ UPDATE MASTER API SETTINGS ============
+// ============ UPDATE SETTINGS (removed master_api) ============
 app.post('/admin/update-settings', requireAuth, (req, res) => {
-    const { master_api, maintenance_message } = req.body;
-    const masterApiValue = master_api === 'on' || master_api === 'true' ? 1 : 0;
+    const { maintenance_message } = req.body;
     
-    db.run(`UPDATE settings SET master_api = ?, maintenance_message = ? WHERE id = 1`, 
-        [masterApiValue, maintenance_message || 'API is currently under maintenance.'],
+    db.run(`UPDATE settings SET maintenance_message = ? WHERE id = 1`, 
+        [maintenance_message || 'API is currently under maintenance.'],
         function(err) {
             if (err) {
                 console.error('❌ Error updating settings:', err);
                 return res.status(500).json({ error: 'Failed to update settings' });
             }
-            res.json({ success: true, master_api: masterApiValue, maintenance_message: maintenance_message });
+            res.json({ success: true, maintenance_message: maintenance_message });
         });
 });
 
@@ -683,25 +714,31 @@ async function handleMistralAI(message) {
     }
 }
 
-// ============ MAIN API ENDPOINT WITH MASTER API CHECK ============
+// ============ MAIN API ENDPOINT WITH PER-KEY ENABLED CHECK ============
 app.all('/api/:endpoint', globalLimiter, async (req, res) => {
     const userKey = req.query.key || req.body.key;
     const endpoint = req.params.endpoint;
     
     if (!userKey) return res.json({ error: 'API key required', contact: OWNER });
     
-    // Check Master API status first
-    const settings = await checkMasterApi();
-    if (settings.master_api === 0 || settings.master_api === '0') {
-        return res.json({
-            success: false,
-            status: 'maintenance',
-            message: settings.maintenance_message || 'API is currently under maintenance.'
-        });
-    }
-    
-    db.get('SELECT * FROM api_keys WHERE key = ? AND status = "active"', [userKey], async (err, keyData) => {
+    db.get('SELECT * FROM api_keys WHERE key = ?', [userKey], async (err, keyData) => {
         if (err || !keyData) return res.json({ error: 'Invalid API key', contact: OWNER });
+        
+        // Check if the key is enabled
+        if (keyData.api_enabled === 0) {
+            return res.json({
+                success: false,
+                message: 'This API Key has been disabled by the administrator.'
+            });
+        }
+        
+        // Check if key is active
+        if (keyData.status !== 'active') {
+            return res.json({ 
+                error: `Key is ${keyData.status}`, 
+                contact: OWNER 
+            });
+        }
         
         // Check if key has access to this endpoint
         try {
@@ -716,6 +753,7 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
             // If parsing fails, allow all
         }
         
+        // Check expiration
         if (keyData.expires_at && new Date(keyData.expires_at) < new Date()) {
             db.run('UPDATE api_keys SET status = "expired" WHERE id = ?', [keyData.id]);
             return res.json({ error: 'Key expired', contact: OWNER });
@@ -723,6 +761,56 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
         
         // Update hits
         db.run('UPDATE api_keys SET hits = hits + 1 WHERE id = ?', [keyData.id]);
+        
+        // Rate limiting checks (if enabled)
+        if (keyData.rate_limit_enabled === 1 && keyData.unlimited_hits !== 1) {
+            const today = new Date().toISOString().split('T')[0];
+            const hour = new Date().getHours();
+            const minute = Math.floor(new Date().getMinutes() / 5) * 5;
+            
+            // Check daily limit
+            const dailyLimit = keyData.rate_limit_per_day || 100;
+            const dailyCount = await new Promise((resolve) => {
+                db.get(
+                    'SELECT requests FROM rate_limit_tracking WHERE api_key = ? AND date = ?', 
+                    [userKey, today], 
+                    (err, row) => resolve(row ? row.requests : 0)
+                );
+            });
+            
+            if (dailyCount >= dailyLimit) {
+                return res.json({ 
+                    error: `Daily rate limit exceeded (${dailyLimit} requests/day)`,
+                    contact: OWNER
+                });
+            }
+            
+            // Check hourly limit
+            const hourlyLimit = keyData.rate_limit_per_hour || 20;
+            const hourlyCount = await new Promise((resolve) => {
+                db.get(
+                    'SELECT SUM(requests) as total FROM rate_limit_tracking WHERE api_key = ? AND date = ? AND hour = ?',
+                    [userKey, today, hour],
+                    (err, row) => resolve(row ? row.total || 0 : 0)
+                );
+            });
+            
+            if (hourlyCount >= hourlyLimit) {
+                return res.json({ 
+                    error: `Hourly rate limit exceeded (${hourlyLimit} requests/hour)`,
+                    contact: OWNER
+                });
+            }
+            
+            // Track this request
+            db.run(
+                `INSERT INTO rate_limit_tracking (api_key, date, hour, minute, requests) 
+                 VALUES (?, ?, ?, ?, 1) 
+                 ON CONFLICT(api_key, date, hour, minute) 
+                 DO UPDATE SET requests = requests + 1`,
+                [userKey, today, hour, minute]
+            );
+        }
         
         if (endpoint === 'mistral') {
             const message = req.query.message || req.body.message;
@@ -791,7 +879,7 @@ app.listen(PORT, () => {
     console.log(`✅ Channel: ${CHANNEL}`);
     console.log('✅ Custom keys working!');
     console.log('✅ All APIs updated!');
-    console.log('✅ Master API System added!');
+    console.log('✅ Per-Key ON/OFF Toggle added!');
     console.log('✅ Key Note Feature added!');
     console.log('✅ API Permissions added!');
     console.log('=====================================\n');
