@@ -162,7 +162,7 @@ db.serialize(() => {
                 ['family', '👨‍👩‍👧‍👦 Family Tree', '/api/family', 'term', '{"term":"979607168114"}', 'Family relationship lookup'],
                 ['num_india', '🇮🇳 Indian Number', '/api/num-india', 'num', '{"num":"9876543210"}', 'Indian mobile number details'],
                 ['num_pak', '🇵🇰 Pakistani Number', '/api/num-pak', 'number', '{"number":"03001234567"}', 'Pakistani mobile number'],
-                ['name_details', '👤 Name Details', '/api/name-details', 'name', '{"name":"abhiraaj"}', 'Name information'],
+                ['leak_pro', '🥀 Leak pro', '/api/leakpro', 'number', '{"number":"918887882236"}', 'LEAK pro information'],
                 ['bank_info', '🏦 Bank IFSC', '/api/bank', 'ifsc', '{"ifsc":"SBIN0001234"}', 'Bank branch details'],
                 ['pan_info', '📄 PAN Card', '/api/pan', 'pan', '{"pan":"AXDPR2606K"}', 'PAN card details'],
                 ['rc_info', '📋 RC Details', '/api/rc', 'owner', '{"owner":"HR26EV0001"}', 'Registration certificate'],
@@ -233,7 +233,7 @@ const apiProxyMap = {
     'family': (p) => `https://ayaanmods.site/family.php?key=${MASTER_KEYS.subhxco}&term=${p.term}`,
     'num-india': (p) => `https://ft-osint-api.duckdns.org/api/number?key=${MASTER_KEYS.ftosint}&num=${p.num}`,
     'num-pak': (p) => `https://ft-osint-api.duckdns.org/api/pk?key=${MASTER_KEYS.ftosint}&number=${p.number}`,
-    'name-details': (p) => `https://ft-osint-api.duckdns.org/api/name?key=${MASTER_KEYS.ftosint}&name=${p.name}`,
+    'leak-pro': (p) => `https://raxxosint.onrender.com/leakosint?key=Customer&quiry=${p.number}`,
     'bank': (p) => `https://ft-osint-api.duckdns.org/api/ifsc?key=${MASTER_KEYS.ftosint}&ifsc=${p.ifsc}`,
     'pan': (p) => `https://ft-osint-api.duckdns.org/api/pan?key=${MASTER_KEYS.ftosint}&pan=${p.pan}`,
     'rc': (p) => `https://leakapi.dpdns.org/rc?registration_number=${p.owner}`,
@@ -264,7 +264,7 @@ function cleanResponseData(data) {
         '@invalidayushh', '@ftgamerv2', '@ftgamer2',
         'InvalidAyush', '@InvalidAyush', 'invalidayush', '@invalidayush',
         'DM TO BUY ACCESS', 'xtradeep', 'Kon_Hu_Mai',
-        'support', 'Support', 'help', 'Help'
+        'support', '@raxusss', 'Support', 'help', 'Help'
     ];
     
     function cleanObject(obj) {
