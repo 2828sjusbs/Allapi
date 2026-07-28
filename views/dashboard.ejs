@@ -3,1340 +3,594 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - OSINT API Hub</title>
+    <title>OSINT API Hub — Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg:        #0a0c10;
+            --surface:   #10141c;
+            --panel:     #151b27;
+            --border:    #1f2a3c;
+            --border-hi: #2a3a55;
+            --accent:    #3b82f6;
+            --accent-lo: rgba(59,130,246,.10);
+            --accent-md: rgba(59,130,246,.25);
+            --emerald:   #10b981;
+            --rose:      #f43f5e;
+            --amber:     #f59e0b;
+            --text-1:    #e8edf5;
+            --text-2:    #8a9ab5;
+            --text-3:    #4d607a;
+            --mono:      'JetBrains Mono', monospace;
+            --sans:      'Inter', system-ui, sans-serif;
+            --radius:    10px;
+            --radius-lg: 16px;
         }
-
-        /* System Font Stack for iOS feel */
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-            background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 50%, #0f1419 100%);
-            background-attachment: fixed;
-            color: #f0f4f8;
-            min-height: 100vh;
-            position: relative;
-        }
-
-        /* Animated background gradient */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--sans); background: var(--bg); color: var(--text-1); min-height: 100vh; line-height: 1.5; }
         body::before {
             content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at 20% 50%, rgba(0, 188, 212, 0.05) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 24px;
-        }
-
-        /* ============ HEADER ============ */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 24px;
-            margin-bottom: 32px;
-            background: rgba(15, 20, 25, 0.4);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(0, 188, 212, 0.1);
-            border-radius: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            animation: slideDown 0.6s ease-out;
-        }
-
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .header h1 {
-            font-size: 28px;
-            font-weight: 600;
-            letter-spacing: -0.5px;
-            background: linear-gradient(135deg, #00bcd4 0%, #7c3aed 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .user-info .badge {
-            background: rgba(0, 188, 212, 0.15);
-            backdrop-filter: blur(10px);
-            padding: 8px 16px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 500;
-            color: #00bcd4;
-            border: 1px solid rgba(0, 188, 212, 0.3);
-            transition: all 0.3s ease;
-        }
-
-        .user-info .badge:hover {
-            background: rgba(0, 188, 212, 0.25);
-            border-color: rgba(0, 188, 212, 0.5);
-        }
-
-        .btn-logout {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-            border: none;
-            padding: 10px 24px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
-        }
-
-        .btn-logout:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
-        }
-
-        .btn-logout:active {
-            transform: translateY(0);
-        }
-
-        /* ============ STATS GRID ============ */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 16px;
-            margin-bottom: 32px;
-        }
-
-        .stat-card {
-            background: rgba(20, 30, 43, 0.5);
-            backdrop-filter: blur(20px);
-            padding: 24px;
-            border-radius: 18px;
-            border: 1px solid rgba(0, 188, 212, 0.15);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            animation: fadeInUp 0.6s ease-out forwards;
-            opacity: 0;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .stat-card:nth-child(1) { animation-delay: 0.1s; }
-        .stat-card:nth-child(2) { animation-delay: 0.2s; }
-        .stat-card:nth-child(3) { animation-delay: 0.3s; }
-        .stat-card:nth-child(4) { animation-delay: 0.4s; }
-
-        .stat-card:hover {
-            background: rgba(20, 30, 43, 0.7);
-            border-color: rgba(0, 188, 212, 0.3);
-            transform: translateY(-8px);
-            box-shadow: 0 12px 40px rgba(0, 188, 212, 0.15);
-        }
-
-        .stat-card .number {
-            font-size: 36px;
-            font-weight: 700;
-            letter-spacing: -1px;
-            background: linear-gradient(135deg, #00bcd4 0%, #7c3aed 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .stat-card .label {
-            font-size: 13px;
-            color: #94a3b8;
-            margin-top: 8px;
-            font-weight: 500;
-            letter-spacing: 0.3px;
-        }
-
-        /* ============ MASTER API CARD ============ */
-        .master-api-card {
-            background: rgba(20, 30, 43, 0.5);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 28px;
-            border: 1px solid rgba(0, 188, 212, 0.15);
-            margin-bottom: 32px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-            animation: fadeInUp 0.6s ease-out 0.5s forwards;
-            opacity: 0;
-        }
-
-        .master-api-card .card-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            color: #00bcd4;
-            letter-spacing: 0.2px;
-        }
-
-        .master-api-card .toggle-row {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        /* iOS Style Toggle Switch */
-        .toggle-switch {
-            position: relative;
-            width: 56px;
-            height: 32px;
-            background: rgba(148, 163, 184, 0.2);
-            border-radius: 16px;
-            cursor: pointer;
-            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-            border: 1px solid rgba(148, 163, 184, 0.3);
-        }
-
-        .toggle-switch.active {
-            background: rgba(16, 185, 129, 0.3);
-            border-color: rgba(16, 185, 129, 0.5);
-        }
-
-        .toggle-switch .slider {
-            position: absolute;
-            top: 3px;
-            left: 3px;
-            width: 26px;
-            height: 26px;
-            background: white;
-            border-radius: 12px;
-            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-        }
-
-        .toggle-switch.active .slider {
-            left: 27px;
-            background: #10b981;
-        }
-
-        .toggle-status {
-            font-weight: 600;
-            font-size: 15px;
-            transition: color 0.3s ease;
-        }
-
-        .toggle-status.on {
-            color: #10b981;
-        }
-
-        .toggle-status.off {
-            color: #ef4444;
-        }
-
-        .master-api-card textarea {
-            width: 100%;
-            padding: 14px 16px;
-            background: rgba(15, 20, 25, 0.5);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(0, 188, 212, 0.2);
-            border-radius: 14px;
-            color: #f0f4f8;
-            font-size: 14px;
-            font-family: 'Monaco', 'Menlo', monospace;
-            resize: vertical;
-            min-height: 80px;
-            margin-bottom: 16px;
-            transition: all 0.3s ease;
-        }
-
-        .master-api-card textarea:focus {
-            outline: none;
-            background: rgba(15, 20, 25, 0.7);
-            border-color: rgba(0, 188, 212, 0.4);
-            box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
-        }
-
-        .master-api-card .btn-save {
-            background: linear-gradient(135deg, #00bcd4 0%, #7c3aed 100%);
-            color: white;
-            border: none;
-            padding: 12px 28px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 188, 212, 0.3);
-        }
-
-        .master-api-card .btn-save:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 188, 212, 0.4);
-        }
-
-        .master-api-card .btn-save:active {
-            transform: translateY(0);
-        }
-
-        /* ============ GENERATE KEY SECTION ============ */
-        .generate-section {
-            background: rgba(20, 30, 43, 0.5);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 28px;
-            border: 1px solid rgba(0, 188, 212, 0.15);
-            margin-bottom: 32px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-            animation: fadeInUp 0.6s ease-out 0.6s forwards;
-            opacity: 0;
-        }
-
-        .generate-section h2 {
-            color: #00bcd4;
-            margin-bottom: 20px;
-            font-size: 18px;
-            font-weight: 600;
-            letter-spacing: 0.2px;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-group label {
-            color: #94a3b8;
-            font-size: 13px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            letter-spacing: 0.3px;
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            padding: 12px 14px;
-            background: rgba(15, 20, 25, 0.5);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(0, 188, 212, 0.2);
-            border-radius: 12px;
-            color: #f0f4f8;
-            font-size: 14px;
-            font-family: inherit;
-            transition: all 0.3s ease;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            background: rgba(15, 20, 25, 0.7);
-            border-color: rgba(0, 188, 212, 0.4);
-            box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
-        }
-
-        .checkbox-group {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            padding: 12px 0;
-        }
-
-        .checkbox-group label {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-weight: normal;
-            color: #e2e8f0;
-            cursor: pointer;
-            transition: color 0.3s ease;
-        }
-
-        .checkbox-group label:hover {
-            color: #00bcd4;
-        }
-
-        .checkbox-group input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            accent-color: #00bcd4;
-        }
-
-        .btn-generate {
-            margin-top: 16px;
-            background: linear-gradient(135deg, #00bcd4 0%, #7c3aed 100%);
-            color: white;
-            border: none;
-            padding: 14px 28px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 15px;
-            width: 100%;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 188, 212, 0.3);
-        }
-
-        .btn-generate:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 188, 212, 0.4);
-        }
-
-        .btn-generate:active {
-            transform: translateY(0);
-        }
-
-        /* ============ KEY CARDS ============ */
-        .keys-header {
-            color: #00bcd4;
-            margin: 40px 0 20px 0;
-            font-size: 18px;
-            font-weight: 600;
-            letter-spacing: 0.2px;
-        }
-
-        .key-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
-            gap: 20px;
-            animation: fadeInUp 0.6s ease-out 0.7s forwards;
-            opacity: 0;
-        }
-
-        .key-card {
-            background: rgba(20, 30, 43, 0.5);
-            backdrop-filter: blur(20px);
-            border-radius: 18px;
-            padding: 24px;
-            border: 1px solid rgba(0, 188, 212, 0.15);
-            position: relative;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-        }
-
-        .key-card:hover {
-            border-color: rgba(0, 188, 212, 0.3);
-            background: rgba(20, 30, 43, 0.7);
-            transform: translateY(-8px);
-            box-shadow: 0 12px 40px rgba(0, 188, 212, 0.2);
-        }
-
-        .key-card .key-name {
-            font-size: 16px;
-            font-weight: 600;
-            color: #00bcd4;
-            margin-bottom: 12px;
-            letter-spacing: 0.2px;
-        }
-
-        .key-card .key-value {
-            font-family: 'Monaco', 'Menlo', monospace;
-            background: rgba(15, 20, 25, 0.6);
-            backdrop-filter: blur(10px);
-            padding: 10px 12px;
-            border-radius: 10px;
-            margin: 8px 0 12px;
-            font-size: 12px;
-            word-break: break-all;
-            color: #10b981;
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            transition: all 0.3s ease;
-        }
-
-        .key-card .key-value:hover {
-            background: rgba(15, 20, 25, 0.8);
-            border-color: rgba(16, 185, 129, 0.4);
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 5px 14px;
-            border-radius: 8px;
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.4px;
-            transition: all 0.3s ease;
-        }
-
-        .status-badge.active {
-            background: rgba(16, 185, 129, 0.25);
-            color: #10b981;
-            border: 1px solid rgba(16, 185, 129, 0.4);
-        }
-
-        .status-badge.disabled {
-            background: rgba(239, 68, 68, 0.25);
-            color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.4);
-        }
-
-        .status-badge.expired {
-            background: rgba(249, 115, 22, 0.25);
-            color: #f97316;
-            border: 1px solid rgba(249, 115, 22, 0.4);
-        }
-
-        .key-card .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            font-size: 13px;
-            border-bottom: 1px solid rgba(0, 188, 212, 0.08);
-        }
-
-        .key-card .info-row .label {
-            color: #94a3b8;
-            font-weight: 500;
-        }
-
-        .key-card .info-row .value {
-            color: #e2e8f0;
-            font-weight: 500;
-        }
-
-        .key-card .timer {
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 15px;
-            font-weight: 600;
-            color: #00bcd4;
-            padding: 10px 12px;
-            background: rgba(0, 188, 212, 0.1);
-            border-radius: 10px;
-            text-align: center;
-            margin: 12px 0;
-            border: 1px solid rgba(0, 188, 212, 0.2);
-            transition: all 0.3s ease;
-        }
-
-        .key-card .timer.expired {
-            color: #ef4444;
-            background: rgba(239, 68, 68, 0.1);
-            border-color: rgba(239, 68, 68, 0.2);
-        }
-
-        .key-card .badges {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin: 12px 0;
-        }
-
-        .badge-item {
-            padding: 4px 12px;
-            border-radius: 8px;
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.3px;
-            border: 1px solid;
-        }
-
-        .badge-item.unlimited {
-            background: rgba(16, 185, 129, 0.15);
-            color: #10b981;
-            border-color: rgba(16, 185, 129, 0.3);
-        }
-
-        .badge-item.note {
-            background: rgba(245, 158, 11, 0.15);
-            color: #f59e0b;
-            border-color: rgba(245, 158, 11, 0.3);
-        }
-
-        .badge-item.api {
-            background: rgba(0, 188, 212, 0.15);
-            color: #00bcd4;
-            border-color: rgba(0, 188, 212, 0.3);
-        }
-
-        .key-card .actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 16px;
-            flex-wrap: wrap;
-        }
-
-        .key-card .actions button {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            flex: 1;
-            min-width: 100px;
-        }
-
-        .btn-edit {
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
-        }
-
-        .btn-edit:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.35);
-        }
-
-        .btn-delete {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
-        }
-
-        .btn-delete:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
-        }
-
-        .btn-toggle {
-            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(100, 116, 139, 0.25);
-        }
-
-        .btn-toggle.active-btn {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
-        }
-
-        .btn-toggle:hover {
-            transform: translateY(-2px);
-        }
-
-        /* ============ MODAL ============ */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(8px);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: rgba(20, 30, 43, 0.8);
-            backdrop-filter: blur(30px);
-            border-radius: 24px;
-            padding: 32px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-            border: 1px solid rgba(0, 188, 212, 0.2);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            animation: slideUp 0.4s ease-out;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(40px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .modal-content h2 {
-            color: #00bcd4;
-            margin-bottom: 24px;
-            font-size: 20px;
-            font-weight: 600;
-            letter-spacing: 0.2px;
-        }
-
-        .modal-content .form-group {
-            margin-bottom: 16px;
-        }
-
-        .modal-content .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #94a3b8;
-            font-size: 13px;
-            font-weight: 600;
-            letter-spacing: 0.3px;
-        }
-
-        .modal-content .form-group input,
-        .modal-content .form-group select,
-        .modal-content .form-group textarea {
-            width: 100%;
-            padding: 12px 14px;
-            background: rgba(15, 20, 25, 0.6);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(0, 188, 212, 0.2);
-            border-radius: 12px;
-            color: #f0f4f8;
-            font-size: 14px;
-            font-family: inherit;
-            transition: all 0.3s ease;
-        }
-
-        .modal-content .form-group input:focus,
-        .modal-content .form-group select:focus,
-        .modal-content .form-group textarea:focus {
-            outline: none;
-            background: rgba(15, 20, 25, 0.8);
-            border-color: rgba(0, 188, 212, 0.4);
-            box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
-        }
-
-        .modal-content .btn-submit {
-            background: linear-gradient(135deg, #00bcd4 0%, #7c3aed 100%);
-            color: white;
-            border: none;
-            padding: 12px 28px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            width: 100%;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 188, 212, 0.3);
-            margin-top: 8px;
-        }
-
-        .modal-content .btn-submit:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 188, 212, 0.4);
-        }
-
-        .modal-content .btn-close {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(220, 38, 38, 0.3) 100%);
-            color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            padding: 10px 20px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            margin-top: 8px;
-            width: 100%;
-            transition: all 0.3s ease;
-        }
-
-        .modal-content .btn-close:hover {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.4) 0%, rgba(220, 38, 38, 0.4) 100%);
-            border-color: rgba(239, 68, 68, 0.5);
-        }
-
-        /* ============ RESPONSIVE ============ */
-        @media (max-width: 768px) {
-            .key-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .header {
-                flex-direction: column;
-                gap: 12px;
-                text-align: center;
-            }
-
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .modal-content {
-                padding: 24px;
-            }
-
-            .container {
-                padding: 16px;
-            }
-        }
-
-        /* ============ UTILITIES ============ */
-        .status-text {
-            font-size: 13px;
-            margin-top: 10px;
-            font-weight: 500;
-            letter-spacing: 0.3px;
-        }
-
-        .status-text.success {
-            color: #10b981;
-        }
-
-        .status-text.error {
-            color: #ef4444;
-        }
+            position: fixed; inset: 0;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.07) 2px, rgba(0,0,0,.07) 4px);
+            pointer-events: none; z-index: 0;
+        }
+        .shell { position: relative; z-index: 1; display: flex; min-height: 100vh; }
+        .sidebar { width: 220px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 24px 0; position: fixed; inset: 0 auto 0 0; }
+        .logo { padding: 0 20px 28px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+        .logo-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; display: grid; place-items: center; font-size: 16px; }
+        .logo-text { font-weight: 700; font-size: 15px; letter-spacing: -.3px; }
+        .logo-sub  { font-size: 10px; color: var(--text-3); letter-spacing: .8px; text-transform: uppercase; }
+        .nav-label { font-size: 10px; color: var(--text-3); letter-spacing: 1px; text-transform: uppercase; padding: 0 20px 8px; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 13px; font-weight: 500; color: var(--text-2); cursor: pointer; transition: all .15s; border-left: 2px solid transparent; text-decoration: none; }
+        .nav-item:hover  { color: var(--text-1); background: rgba(255,255,255,.03); }
+        .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-lo); }
+        .nav-item i { width: 16px; text-align: center; font-size: 13px; }
+        .sidebar-footer { margin-top: auto; padding: 16px 20px; border-top: 1px solid var(--border); }
+        .user-badge { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+        .avatar { width: 30px; height: 30px; background: var(--accent-md); border: 1px solid var(--accent); border-radius: 50%; display: grid; place-items: center; font-size: 11px; color: var(--accent); font-weight: 700; }
+        .user-name  { font-weight: 600; font-size: 12px; }
+        .user-role  { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .5px; }
+        .logout-btn { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text-2); font-size: 12px; font-family: var(--sans); cursor: pointer; text-decoration: none; transition: all .15s; width: 100%; justify-content: center; }
+        .logout-btn:hover { border-color: var(--rose); color: var(--rose); }
+        .main { margin-left: 220px; flex: 1; }
+        .topbar { height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 10; }
+        .topbar-title { font-size: 13px; font-weight: 600; color: var(--text-2); }
+        .topbar-title span { color: var(--text-1); }
+        .live-dot { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--emerald); }
+        .live-dot::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--emerald); animation: pulse 1.8s infinite; }
+        @keyframes pulse { 0%{ box-shadow:0 0 0 0 rgba(16,185,129,.5);} 70%{box-shadow:0 0 0 6px rgba(16,185,129,0);} 100%{box-shadow:0 0 0 0 rgba(16,185,129,0);} }
+        .content { padding: 28px; }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+        .stat { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px 24px; position: relative; overflow: hidden; transition: all .2s; }
+        .stat:hover { border-color: var(--border-hi); background: rgba(21,27,39,.8); }
+        .stat::after { content: ''; position: absolute; top: -40px; right: -40px; width: 100px; height: 100px; border-radius: 50%; background: var(--glow, var(--accent)); opacity: .06; }
+        .stat:nth-child(2) { --glow: var(--emerald); }
+        .stat:nth-child(3) { --glow: var(--amber); }
+        .stat:nth-child(4) { --glow: #8b5cf6; }
+        .stat-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .stat-val { font-family: var(--mono); font-size: 32px; font-weight: 600; letter-spacing: -1px; }
+        .stat-sub { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+        .panel-head { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; }
+        .panel-head i { color: var(--accent); font-size: 12px; }
+        .panel-body { padding: 20px; }
+        .field { margin-bottom: 16px; }
+        label { display: block; font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 7px; }
+        input[type="text"], input[type="number"], input[type="date"], input[type="time"], select, textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px; font-size: 13px; color: var(--text-1); font-family: var(--sans); outline: none; transition: border-color .15s; -webkit-appearance: none; }
+        input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-lo); }
+        select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238a9ab5' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+        select option { background: var(--panel); }
+        textarea { resize: vertical; min-height: 80px; }
+        input::placeholder { color: var(--text-3); }
+        small.hint { font-size: 10px; color: var(--text-3); margin-top: 4px; display: block; }
+        .toggle-group { display: flex; gap: 8px; }
+        .toggle-opt { flex: 1; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text-2); transition: all .15s; user-select: none; }
+        .toggle-opt input { display: none; }
+        .toggle-opt:has(input:checked) { border-color: var(--accent); background: var(--accent-lo); color: var(--accent); }
+        .toggle-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-hi); flex-shrink: 0; transition: all .15s; }
+        .toggle-opt:has(input:checked) .toggle-dot { border-color: var(--accent); background: var(--accent); box-shadow: 0 0 0 3px var(--accent-lo); }
+        .api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 220px; overflow-y: auto; }
+        .api-grid::-webkit-scrollbar { width: 4px; }
+        .api-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        .api-chip { display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; font-size: 11px; color: var(--text-2); transition: all .15s; }
+        .api-chip input { display: none; }
+        .api-chip:has(input:checked) { border-color: var(--accent); background: var(--accent-lo); color: var(--accent); }
+        .chip-box { width: 13px; height: 13px; border: 1.5px solid var(--border-hi); border-radius: 3px; flex-shrink: 0; display: grid; place-items: center; transition: all .15s; }
+        .api-chip:has(input:checked) .chip-box { background: var(--accent); border-color: var(--accent); }
+        .chip-box::after { content: ''; width: 5px; height: 5px; border-bottom: 1.5px solid white; border-right: 1.5px solid white; transform: rotate(45deg) translate(-1px,-1px); opacity: 0; transition: opacity .1s; }
+        .api-chip:has(input:checked) .chip-box::after { opacity: 1; }
+        .api-actions { display: flex; gap: 6px; margin-bottom: 10px; }
+        .btn-xs { padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: var(--bg); color: var(--text-2); cursor: pointer; transition: all .15s; font-family: var(--sans); }
+        .btn-xs:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-primary { width: 100%; padding: 11px; background: var(--accent); border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600; color: white; cursor: pointer; font-family: var(--sans); transition: all .15s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+        .btn-primary:hover { background: #2563eb; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(59,130,246,.3); }
+        .tbl-wrap { overflow: auto; max-height: 540px; }
+        .tbl-wrap::-webkit-scrollbar { width: 4px; }
+        .tbl-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        thead th { padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .7px; border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; background: var(--panel); }
+        tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: rgba(255,255,255,.02); }
+        td { padding: 11px 14px; vertical-align: middle; }
+        .key-code { font-family: var(--mono); font-size: 11px; background: var(--bg); border: 1px solid var(--border); padding: 3px 7px; border-radius: 4px; color: var(--accent); }
+        .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
+        .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
+        .badge-active  { background: rgba(16,185,129,.12); color: #10b981; border: 1px solid rgba(16,185,129,.25); }
+        .badge-active::before { background: #10b981; }
+        .badge-disabled { background: rgba(244,63,94,.1); color: #f43f5e; border: 1px solid rgba(244,63,94,.2); }
+        .badge-disabled::before { background: #f43f5e; }
+        .badge-expired { background: rgba(245,158,11,.1); color: #f59e0b; border: 1px solid rgba(245,158,11,.2); }
+        .badge-expired::before { background: #f59e0b; }
+        .row-actions { display: flex; gap: 5px; }
+        .action-btn { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text-2); cursor: pointer; font-size: 11px; transition: all .15s; }
+        .action-btn.warn:hover { border-color: #f59e0b; color: #f59e0b; background: rgba(245,158,11,.08); }
+        .action-btn.danger:hover { border-color: #f43f5e; color: #f43f5e; background: rgba(244,63,94,.08); }
+        
+        /* MASTER API CARD */
+        .master-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; }
+        .master-head { font-size: 13px; font-weight: 600; color: var(--accent); margin-bottom: 16px; }
+        .toggle-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .toggle-switch { width: 50px; height: 28px; background: rgba(148,163,184,.2); border: 1px solid var(--border); border-radius: 14px; cursor: pointer; position: relative; transition: all .3s; }
+        .toggle-switch.active { background: rgba(16,185,129,.3); border-color: var(--emerald); }
+        .toggle-switch .slider { position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; background: white; border-radius: 11px; transition: all .3s; box-shadow: 0 2px 4px rgba(0,0,0,.2); }
+        .toggle-switch.active .slider { left: 24px; }
+        .toggle-status { font-weight: 600; font-size: 13px; color: var(--text-2); }
+        .toggle-status.on { color: var(--emerald); }
+        .toggle-status.off { color: var(--rose); }
+        
+        /* TIMER */
+        .timer-display { font-family: var(--mono); font-size: 13px; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--accent); margin: 8px 0; }
+        .timer-display.expired { color: var(--rose); border-color: rgba(244,63,94,.3); }
+        
+        /* MODAL */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.7); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .modal-head { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 16px; }
+        .modal-close { float: right; background: none; border: none; color: var(--text-2); cursor: pointer; font-size: 16px; }
+        .modal-close:hover { color: var(--rose); }
+        .btn-modal-submit { width: 100%; padding: 10px; background: var(--accent); color: white; border: none; border-radius: var(--radius); font-weight: 600; cursor: pointer; margin-top: 12px; transition: all .15s; }
+        .btn-modal-submit:hover { background: #2563eb; }
+        
+        .foot { text-align: center; padding: 20px 0 28px; font-size: 11px; color: var(--text-3); border-top: 1px solid var(--border); margin-top: 28px; }
+        .foot a { color: var(--accent); text-decoration: none; }
+        @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; } .stats { grid-template-columns: 1fr; } }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🔐 OSINT API Hub — Admin Dashboard</h1>
-            <div class="user-info">
-                <span class="badge">👤 <%= user.username %> (<%= user.role %>)</span>
-                <a href="/logout" class="btn-logout">Logout</a>
+<div class="shell">
+    <aside class="sidebar">
+        <div class="logo">
+            <div class="logo-icon"><i class="fas fa-satellite-dish"></i></div>
+            <div>
+                <div class="logo-text">OSINT Hub</div>
+                <div class="logo-sub">API Control</div>
             </div>
         </div>
+        <div class="nav-label">Overview</div>
+        <a class="nav-item active" href="#"><i class="fas fa-gauge-high"></i> Dashboard</a>
+        <div class="nav-label" style="margin-top:12px;">Manage</div>
+        <a class="nav-item" href="#gen"><i class="fas fa-plus"></i> Generate Key</a>
+        <a class="nav-item" href="#keys"><i class="fas fa-key"></i> API Keys</a>
+        <div class="sidebar-footer">
+            <div class="user-badge">
+                <div class="avatar"><%= user.username[0].toUpperCase() %></div>
+                <div>
+                    <div class="user-name"><%= user.username %></div>
+                    <div class="user-role"><%= user.role %></div>
+                </div>
+            </div>
+            <a href="/logout" class="logout-btn"><i class="fas fa-arrow-right-from-bracket"></i> Sign Out</a>
+        </div>
+    </aside>
 
-        <!-- Stats -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="number"><%= keys.length %></div>
-                <div class="label">Total API Keys</div>
-            </div>
-            <div class="stat-card">
-                <div class="number"><%= totalHits %></div>
-                <div class="label">Total Hits</div>
-            </div>
-            <div class="stat-card">
-                <div class="number"><%= active %></div>
-                <div class="label">Active Keys</div>
-            </div>
-            <div class="stat-card">
-                <div class="number"><%= apis.length %></div>
-                <div class="label">Available APIs</div>
-            </div>
+    <main class="main">
+        <div class="topbar">
+            <div class="topbar-title">Dashboard <span>/ Overview</span></div>
+            <div class="live-dot">System Online</div>
         </div>
+        <div class="content">
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-label"><i class="fas fa-bolt"></i> Total API Hits</div>
+                    <div class="stat-val"><%= (totalHits ?? 0).toLocaleString() %></div>
+                    <div class="stat-sub">All-time requests</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label"><i class="fas fa-key"></i> Total Keys</div>
+                    <div class="stat-val"><%= keys.length %></div>
+                    <div class="stat-sub">Issued credentials</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label"><i class="fas fa-circle-check"></i> Active Keys</div>
+                    <div class="stat-val"><%= active %></div>
+                    <div class="stat-sub">Currently live</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label"><i class="fas fa-cube"></i> Available APIs</div>
+                    <div class="stat-val"><%= apis.length %></div>
+                    <div class="stat-sub">API endpoints</div>
+                </div>
+            </div>
 
-        <!-- Master API Card -->
-        <div class="master-api-card" id="masterApiCard">
-            <div class="card-title">🌐 API SYSTEM</div>
-            <div class="toggle-row">
-                <div class="toggle-switch <%= settings && settings.master_api == 1 ? 'active' : '' %>" 
-                     id="masterToggle" onclick="toggleMasterApi()">
-                    <div class="slider"></div>
+            <!-- Master API Card -->
+            <div class="master-card" id="masterCard">
+                <div class="master-head"><i class="fas fa-server"></i> Master API Control</div>
+                <div class="toggle-row">
+                    <div class="toggle-switch <%= settings && settings.master_api == 1 ? 'active' : '' %>" id="masterToggle" onclick="toggleMasterApi()">
+                        <div class="slider"></div>
+                    </div>
+                    <span class="toggle-status <%= settings && settings.master_api == 1 ? 'on' : 'off' %>" id="masterStatus">
+                        <%= settings && settings.master_api == 1 ? '🟢 ONLINE' : '🔴 OFFLINE' %>
+                    </span>
                 </div>
-                <span class="toggle-status <%= settings && settings.master_api == 1 ? 'on' : 'off' %>" id="masterStatus">
-                    <%= settings && settings.master_api == 1 ? '🟢 ONLINE' : '🔴 OFFLINE' %>
-                </span>
+                <div class="field">
+                    <label>Maintenance Message</label>
+                    <textarea id="maintenanceMessage" placeholder="Enter maintenance message..."><%= settings && settings.maintenance_message ? settings.maintenance_message : 'API is under maintenance.' %></textarea>
+                    <button class="btn-primary" onclick="saveMasterSettings()" style="margin-top:10px;"><i class="fas fa-save"></i> Save Settings</button>
+                    <div id="masterSaveStatus" style="font-size:11px;margin-top:8px;"></div>
+                </div>
             </div>
-            <textarea id="maintenanceMessage" placeholder="Maintenance message..."><%= settings && settings.maintenance_message ? settings.maintenance_message : 'API is currently under maintenance.' %></textarea>
-            <button class="btn-save" onclick="saveMasterSettings()">💾 Save Settings</button>
-            <div id="masterSaveStatus" class="status-text"></div>
-        </div>
 
-        <!-- Generate Key Section -->
-        <div class="generate-section">
-            <h2>➕ Generate New API Key</h2>
-            <form action="/admin/generate-key" method="POST" id="generateKeyForm">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Key Name *</label>
-                        <input type="text" name="name" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Custom Key</label>
-                        <div style="display:flex;gap:10px;align-items:center;">
-                            <input type="checkbox" name="enable_custom" id="enableCustom" onchange="toggleCustomKey()">
-                            <label for="enableCustom" style="font-weight:normal;color:#e2e8f0;margin:0;">Enable Custom</label>
-                        </div>
-                        <input type="text" name="custom_key" id="customKeyInput" disabled placeholder="e.g., MY_PREMIUM_KEY" style="margin-top:8px;">
+            <div class="grid">
+                <div class="panel" id="gen">
+                    <div class="panel-head"><i class="fas fa-plus-circle"></i> Generate New Key</div>
+                    <div class="panel-body">
+                        <form method="POST" action="/admin/generate-key">
+                            <div class="field">
+                                <label>Customer Name</label>
+                                <input type="text" name="name" placeholder="e.g. John Doe" required>
+                            </div>
+                            <div class="field">
+                                <label>App Name</label>
+                                <input type="text" name="app_name" placeholder="e.g. OSINT Scanner v2">
+                            </div>
+                            <div class="field">
+                                <label>Custom API Key <span style="color:var(--text-3);font-size:10px;">(optional)</span></label>
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <label class="toggle-opt" style="flex:0 0 auto;padding:8px 12px;">
+                                        <input type="checkbox" id="enableCustomKey" name="enable_custom" value="on" onchange="toggleCustomKey()">
+                                        <div class="toggle-dot"></div>
+                                        <span style="font-size:12px;">Enable</span>
+                                    </label>
+                                    <input type="text" name="custom_key" id="customKey" placeholder="SAHIL, ERAAA, OSINT…" style="display:none;flex:1;">
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label>Key Note <span style="color:var(--text-3);font-size:10px;">(optional)</span></label>
+                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                                    <label class="toggle-opt" style="flex:0 0 auto;padding:8px 12px;">
+                                        <input type="checkbox" id="enableNote" name="note_enabled" value="on" onchange="toggleKeyNote()">
+                                        <div class="toggle-dot"></div>
+                                        <span style="font-size:12px;">Enable</span>
+                                    </label>
+                                </div>
+                                <input type="text" name="key_note" id="keyNote" placeholder="e.g. Premium Customer" style="display:none;">
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                <div class="field">
+                                    <label>Validity</label>
+                                    <select name="expiry" id="expirySelect" onchange="toggleCustomExpiry()">
+                                        <option value="7d">7 Days</option>
+                                        <option value="15d">15 Days</option>
+                                        <option value="1m" selected>30 Days</option>
+                                        <option value="1y">1 Year</option>
+                                        <option value="custom">Custom Date</option>
+                                        <option value="">No Expiry</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label>Daily Limit</label>
+                                    <input type="number" name="daily_limit" value="100">
+                                    <small class="hint">0 = unlimited</small>
+                                </div>
+                            </div>
+                            <div id="customExpiryDiv" class="field hidden" style="display:none;">
+                                <label>Custom Expiry Date & Time</label>
+                                <input type="date" name="custom_expiry_date" id="customDate">
+                                <input type="time" name="custom_expiry_time" id="customTime" style="margin-top:8px;">
+                            </div>
+                            <div class="field">
+                                <label>Hits Limit</label>
+                                <div class="toggle-group">
+                                    <label class="toggle-opt">
+                                        <input type="radio" name="limit_type" id="unlimitedRadio" value="unlimited" onchange="toggleLimitInput()" checked>
+                                        <div class="toggle-dot"></div>
+                                        Unlimited
+                                    </label>
+                                    <label class="toggle-opt">
+                                        <input type="radio" name="limit_type" id="limitedRadio" value="limited" onchange="toggleLimitInput()">
+                                        <div class="toggle-dot"></div>
+                                        One-time Cap
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="maxTotalHitsDiv" class="field hidden" style="display:none;">
+                                <label>Max Total Hits</label>
+                                <input type="number" name="max_total_hits" value="20">
+                            </div>
+                            <div class="field">
+                                <label>Rate Limits</label>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                                    <div>
+                                        <label style="font-size:10px;color:var(--text-3);">Per Hour</label>
+                                        <input type="number" name="rate_limit_hour" value="20" placeholder="20">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:10px;color:var(--text-3);">Per Minute</label>
+                                        <input type="number" name="rate_limit_minute" value="5" placeholder="5">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label>IP Whitelist</label>
+                                <input type="text" name="ip_whitelist" placeholder="192.168.1.1, 10.0.0.1">
+                                <small class="hint">Leave blank to allow all IPs</small>
+                            </div>
+                            <div class="field">
+                                <label>Allowed APIs</label>
+                                <div class="api-actions">
+                                    <button type="button" class="btn-xs" onclick="selectAll()">Select All</button>
+                                    <button type="button" class="btn-xs" onclick="deselectAll()">Deselect All</button>
+                                </div>
+                                <div class="api-grid">
+                                    <% apis.forEach(api => { %>
+                                    <label class="api-chip">
+                                        <input type="checkbox" name="allowed_apis" value="<%= api.name %>" class="api-checkbox">
+                                        <div class="chip-box"></div>
+                                        <%= api.display_name %>
+                                    </label>
+                                    <% }); %>
+                                </div>
+                                <small class="hint">Leave all unchecked to allow every API</small>
+                            </div>
+                            <button type="submit" class="btn-primary"><i class="fas fa-key"></i> Generate Key</button>
+                        </form>
                     </div>
                 </div>
-                <div class="form-grid" style="margin-top:12px;">
-                    <div class="form-group">
-                        <label>Expiry</label>
-                        <select name="expiry" id="expirySelect" onchange="toggleCustomExpiry()">
-                            <option value="3d">3 Days</option>
-                            <option value="7d" selected>7 Days</option>
-                            <option value="30d">30 Days</option>
-                            <option value="custom">Custom</option>
-                        </select>
-                    </div>
-                    <div id="customExpiryContainer" style="display:none;">
-                        <label style="color:#94a3b8;font-size:13px;font-weight:600;margin-bottom:8px;display:block;">Custom Date & Time</label>
-                        <input type="date" name="custom_expiry_date" id="customExpiryDate">
-                        <input type="time" name="custom_expiry_time" id="customExpiryTime" style="margin-top:8px;">
-                    </div>
-                </div>
-                <div class="form-grid" style="margin-top:12px;">
-                    <div class="form-group">
-                        <label>Unlimited Hits</label>
-                        <div style="display:flex;gap:10px;align-items:center;padding:8px 0;">
-                            <input type="checkbox" name="unlimited_hits" id="unlimitedHits" onchange="toggleRateLimits()">
-                            <label for="unlimitedHits" style="font-weight:normal;color:#e2e8f0;margin:0;">Enable Unlimited</label>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Key Note</label>
-                        <div style="display:flex;gap:10px;align-items:center;padding:8px 0;">
-                            <input type="checkbox" name="note_enabled" id="noteEnabled" onchange="toggleKeyNote()">
-                            <label for="noteEnabled" style="font-weight:normal;color:#e2e8f0;margin:0;">Enable Note</label>
-                        </div>
-                        <input type="text" name="key_note" id="keyNoteInput" disabled placeholder="e.g., Premium Customer" style="margin-top:8px;">
-                    </div>
-                </div>
-                <div id="rateLimitContainer" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;">
-                    <div class="form-group">
-                        <label>Rate Limit / Day</label>
-                        <input type="number" name="rate_limit_per_day" value="100">
-                    </div>
-                    <div class="form-group">
-                        <label>Rate Limit / Hour</label>
-                        <input type="number" name="rate_limit_per_hour" value="20">
-                    </div>
-                    <div class="form-group">
-                        <label>Rate Limit / Minute</label>
-                        <input type="number" name="rate_limit_per_minute" value="5">
-                    </div>
-                </div>
-                <div class="form-group" style="margin-top:12px;">
-                    <label>Allowed APIs</label>
-                    <div class="checkbox-group">
-                        <label><input type="checkbox" name="selected_apis" value="all" checked onchange="handleSelectAll(this)"> All</label>
-                        <% apis.forEach(api => { %>
-                            <label><input type="checkbox" name="selected_apis" value="<%= api.name %>" class="api-checkbox"> <%= api.display_name %></label>
-                        <% }); %>
-                    </div>
-                </div>
-                <button type="submit" class="btn-generate">🔑 Generate Key</button>
-            </form>
-        </div>
 
-        <!-- Key Cards -->
-        <h2 class="keys-header">🔑 API Keys</h2>
-        <div class="key-grid" id="keyGrid">
-            <% if (keys && keys.length > 0) { %>
-                <% keys.forEach(key => { 
-                    const isExpired = key.expires_at && new Date(key.expires_at) < new Date();
-                    const status = isExpired ? 'expired' : (key.status || 'active');
-                    let allowedApis = [];
-                    try { allowedApis = JSON.parse(key.allowed_apis || '["all"]'); } catch(e) { allowedApis = ['all']; }
-                %>
-                    <div class="key-card" id="key-<%= key.id %>" data-expires="<%= key.expires_at %>">
-                        <div class="key-name"><%= key.name || 'Unnamed' %></div>
-                        <div class="key-value"><%= key.key %></div>
-                        <div>
-                            <span class="status-badge <%= status %>"><%= status.toUpperCase() %></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="label">Created</span>
-                            <span class="value"><%= key.created_at ? new Date(key.created_at).toLocaleString() : 'N/A' %></span>
-                        </div>
-                        <div class="info-row">
-                            <span class="label">Expires</span>
-                            <span class="value"><%= key.expires_at ? new Date(key.expires_at).toLocaleString() : 'Never' %></span>
-                        </div>
-                        <div class="timer" id="timer-<%= key.id %>">
-                            <%= key.expires_at ? 'Loading...' : '🔵 Never Expires' %>
-                        </div>
-                        <div class="badges">
-                            <% if (key.unlimited_hits == 1) { %>
-                                <span class="badge-item unlimited">🚀 Unlimited</span>
-                            <% } %>
-                            <% if (key.note_enabled == 1 && key.key_note) { %>
-                                <span class="badge-item note">📝 <%= key.key_note %></span>
-                            <% } %>
-                            <span class="badge-item api">
-                                APIs: <%= allowedApis.includes('all') ? 'All' : allowedApis.length %>
-                            </span>
-                        </div>
-                        <div class="actions">
-                            <button class="btn-edit" onclick="openEditModal(<%= key.id %>, '<%= key.name %>', '<%= key.key %>', '<%= key.expires_at %>', <%= key.unlimited_hits %>, '<%= key.status %>', '<%= key.allowed_apis %>', <%= key.note_enabled %>, '<%= key.key_note || '' %>')">✏️ Edit</button>
-                            <button class="btn-toggle <%= status === 'active' ? 'active-btn' : '' %>" onclick="toggleKeyStatus(<%= key.id %>, '<%= status %>')">
-                                <%= status === 'active' ? '✅ Active' : '🔴 Disable' %>
-                            </button>
-                            <button class="btn-delete" onclick="deleteKey(<%= key.id %>)">🗑️ Delete</button>
-                        </div>
+                <div class="panel" id="keys">
+                    <div class="panel-head">
+                        <i class="fas fa-list-ul"></i> API Keys
+                        <span style="margin-left:auto;font-size:11px;color:var(--text-3);font-weight:400;"><%= keys.length %> total</span>
                     </div>
-                <% }); %>
-            <% } else { %>
-                <p style="color:#94a3b8;text-align:center;padding:60px 20px;grid-column:1/-1;">No API keys generated yet. Create your first key to get started.</p>
-            <% } %>
+                    <div class="tbl-wrap">
+                        <table>
+                            <thead>
+                                <tr><th>Key</th><th>Name</th><th>Hits</th><th>Expires</th><th>Status</th><th></th></tr>
+                            </thead>
+                            <tbody>
+                                <% keys.forEach(key => { 
+                                    const isExpired = key.expires_at && new Date(key.expires_at) < new Date();
+                                    const status = isExpired ? 'expired' : (key.status || 'active');
+                                %>
+                                <tr>
+                                    <td><span class="key-code"><%= key.key %></span></td>
+                                    <td style="color:var(--text-2);font-size:12px;"><%= key.name || key.app_name || '—' %></td>
+                                    <td style="font-family:var(--mono);font-size:11px;color:var(--text-2);"><%= key.hits %><span style="color:var(--text-3)">/<%= key.max_total_hits || '∞' %></span></td>
+                                    <td style="font-size:11px;"><span id="timer-<%= key.id %>" data-expires="<%= key.expires_at %>">—</span></td>
+                                    <td><span class="badge badge-<%= status %>"><%= status %></span></td>
+                                    <td>
+                                        <div class="row-actions">
+                                            <button class="action-btn warn" title="Toggle" onclick="openEditModal(<%= key.id %>, '<%= key.name %>', '<%= key.expires_at %>', '<%= key.status %>', <%= key.unlimited_hits || 0 %>, '<%= key.note_enabled || 0 %>', '<%= (key.key_note || '').replace(/'/g, '\\'') %>')"><i class="fas fa-edit"></i></button>
+                                            <form method="POST" action="/admin/toggle-status" style="display:contents">
+                                                <input type="hidden" name="id" value="<%= key.id %>">
+                                                <input type="hidden" name="status" value="<%= key.status %>">
+                                                <button type="submit" class="action-btn warn" title="Toggle Status"><i class="fas fa-power-off"></i></button>
+                                            </form>
+                                            <form method="POST" action="/admin/delete-key" style="display:contents" onsubmit="return confirm('Delete this key?')">
+                                                <input type="hidden" name="id" value="<%= key.id %>">
+                                                <button type="submit" class="action-btn danger" title="Delete"><i class="fas fa-trash"></i></button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="foot">
+                Owner: <a href="#">@BMW_AURA5</a> &nbsp;·&nbsp; Channel: <a href="#">@OSINT_ERA1</a>
+            </div>
         </div>
+    </main>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal" id="editModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeEditModal()">&times;</button>
+        <div class="modal-head"><i class="fas fa-edit"></i> Edit API Key</div>
+        <form id="editForm" method="POST" action="/admin/edit-key">
+            <input type="hidden" name="key_id" id="editKeyId">
+            
+            <div class="field">
+                <label>Key Name</label>
+                <input type="text" name="name" id="editName" required>
+            </div>
+            
+            <div class="field">
+                <label>Expiry Date</label>
+                <input type="date" name="custom_expiry_date" id="editDate">
+                <input type="time" name="custom_expiry_time" id="editTime" style="margin-top:8px;">
+                <small class="hint">Leave empty for no expiry</small>
+            </div>
+            
+            <div class="field">
+                <label>Status</label>
+                <select name="status" id="editStatus">
+                    <option value="active">Active</option>
+                    <option value="disabled">Disabled</option>
+                    <option value="expired">Expired</option>
+                </select>
+            </div>
+            
+            <div class="field">
+                <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:normal;margin-bottom:0;">
+                    <input type="checkbox" name="unlimited_hits" id="editUnlimited"> Unlimited Hits
+                </label>
+            </div>
+            
+            <div class="field">
+                <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:normal;margin-bottom:0;">
+                    <input type="checkbox" name="note_enabled" id="editNoteEnabled" onchange="toggleEditNote()"> Add Note
+                </label>
+                <input type="text" name="key_note" id="editKeyNote" placeholder="e.g., Premium Customer" style="margin-top:8px;display:none;">
+            </div>
+            
+            <button type="submit" class="btn-modal-submit"><i class="fas fa-save"></i> Save Changes</button>
+        </form>
     </div>
+</div>
 
-    <!-- Edit Modal -->
-    <div class="modal" id="editModal">
-        <div class="modal-content">
-            <h2>✏️ Edit API Key</h2>
-            <form id="editKeyForm">
-                <input type="hidden" name="key_id" id="editKeyId">
-                <div class="form-group">
-                    <label>Key Name</label>
-                    <input type="text" name="name" id="editName" required>
-                </div>
-                <div class="form-group">
-                    <label>Expiry</label>
-                    <select name="expiry" id="editExpiry" onchange="toggleEditCustomExpiry()">
-                        <option value="3d">3 Days</option>
-                        <option value="7d">7 Days</option>
-                        <option value="30d">30 Days</option>
-                        <option value="custom">Custom</option>
-                    </select>
-                </div>
-                <div id="editCustomExpiryContainer" style="display:none;" class="form-group">
-                    <label>Custom Date & Time</label>
-                    <input type="date" name="custom_expiry_date" id="editCustomDate">
-                    <input type="time" name="custom_expiry_time" id="editCustomTime" style="margin-top:8px;">
-                </div>
-                <div class="form-group">
-                    <label>Status</label>
-                    <select name="status" id="editStatus">
-                        <option value="active">Active</option>
-                        <option value="disabled">Disabled</option>
-                        <option value="expired">Expired</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" name="unlimited_hits" id="editUnlimited" onchange="toggleEditRateLimits()"> Unlimited Hits
-                    </label>
-                </div>
-                <div id="editRateLimitContainer" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-                    <div class="form-group">
-                        <label>Rate Limit / Day</label>
-                        <input type="number" name="rate_limit_per_day" id="editRateDay" value="100">
-                    </div>
-                    <div class="form-group">
-                        <label>Rate Limit / Hour</label>
-                        <input type="number" name="rate_limit_per_hour" id="editRateHour" value="20">
-                    </div>
-                    <div class="form-group">
-                        <label>Rate Limit / Minute</label>
-                        <input type="number" name="rate_limit_per_minute" id="editRateMin" value="5">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" name="note_enabled" id="editNoteEnabled" onchange="toggleEditKeyNote()"> Enable Note
-                    </label>
-                    <input type="text" name="key_note" id="editKeyNote" placeholder="e.g., Premium Customer" style="margin-top:8px;">
-                </div>
-                <div class="form-group">
-                    <label>Allowed APIs</label>
-                    <div class="checkbox-group">
-                        <label><input type="checkbox" value="all" id="editSelectAll" onchange="handleEditSelectAll()"> All</label>
-                        <% apis.forEach(api => { %>
-                            <label><input type="checkbox" name="selected_apis" value="<%= api.name %>" class="edit-api-checkbox"> <%= api.display_name %></label>
-                        <% }); %>
-                    </div>
-                </div>
-                <button type="submit" class="btn-submit">💾 Save Changes</button>
-                <button type="button" class="btn-close" onclick="closeEditModal()">❌ Cancel</button>
-            </form>
-        </div>
-    </div>
+<script>
+    // Toggle Master API
+    function toggleMasterApi() {
+        const toggle = document.getElementById('masterToggle');
+        const status = document.getElementById('masterStatus');
+        toggle.classList.toggle('active');
+        const isActive = toggle.classList.contains('active');
+        status.textContent = isActive ? '🟢 ONLINE' : '🔴 OFFLINE';
+        status.className = 'toggle-status ' + (isActive ? 'on' : 'off');
+    }
 
-    <script>
-        // ============ MASTER API TOGGLE ============
-        function toggleMasterApi() {
-            const toggle = document.getElementById('masterToggle');
-            const status = document.getElementById('masterStatus');
-            const isActive = toggle.classList.toggle('active');
-            status.textContent = isActive ? '🟢 ONLINE' : '🔴 OFFLINE';
-            status.className = 'toggle-status ' + (isActive ? 'on' : 'off');
-        }
-
-        async function saveMasterSettings() {
-            const toggle = document.getElementById('masterToggle');
-            const message = document.getElementById('maintenanceMessage').value;
-            const masterApi = toggle.classList.contains('active') ? 'on' : 'off';
-            
-            const statusDiv = document.getElementById('masterSaveStatus');
-            statusDiv.textContent = '⏳ Saving...';
-            statusDiv.className = 'status-text';
-            
-            try {
-                const response = await fetch('/admin/update-settings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ master_api: masterApi, maintenance_message: message })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    statusDiv.textContent = '✅ Settings saved successfully!';
-                    statusDiv.className = 'status-text success';
-                } else {
-                    statusDiv.textContent = '❌ Failed to save settings';
-                    statusDiv.className = 'status-text error';
-                }
-            } catch(e) {
-                statusDiv.textContent = '❌ Error: ' + e.message;
-                statusDiv.className = 'status-text error';
-            }
-        }
-
-        // ============ GENERATE KEY FORM HELPERS ============
-        function toggleCustomKey() {
-            const checkbox = document.getElementById('enableCustom');
-            const input = document.getElementById('customKeyInput');
-            input.disabled = !checkbox.checked;
-            if (!checkbox.checked) input.value = '';
-        }
-
-        function toggleCustomExpiry() {
-            const select = document.getElementById('expirySelect');
-            const container = document.getElementById('customExpiryContainer');
-            container.style.display = select.value === 'custom' ? 'block' : 'none';
-        }
-
-        function toggleRateLimits() {
-            const checkbox = document.getElementById('unlimitedHits');
-            const container = document.getElementById('rateLimitContainer');
-            container.style.display = checkbox.checked ? 'none' : 'grid';
-        }
-
-        function toggleKeyNote() {
-            const checkbox = document.getElementById('noteEnabled');
-            const input = document.getElementById('keyNoteInput');
-            input.disabled = !checkbox.checked;
-            if (!checkbox.checked) input.value = '';
-        }
-
-        function handleSelectAll(selectAll) {
-            const checkboxes = document.querySelectorAll('.api-checkbox');
-            checkboxes.forEach(cb => cb.checked = selectAll.checked);
-        }
-
-        // ============ EDIT KEY MODAL ============
-        function openEditModal(id, name, key, expiresAt, unlimited, status, allowedApis, noteEnabled, keyNote) {
-            document.getElementById('editKeyId').value = id;
-            document.getElementById('editName').value = name || '';
-            document.getElementById('editStatus').value = status || 'active';
-            document.getElementById('editUnlimited').checked = unlimited == 1;
-            
-            if (noteEnabled == 1) {
-                document.getElementById('editNoteEnabled').checked = true;
-                document.getElementById('editKeyNote').disabled = false;
-                document.getElementById('editKeyNote').value = keyNote || '';
+    async function saveMasterSettings() {
+        const toggle = document.getElementById('masterToggle');
+        const message = document.getElementById('maintenanceMessage').value;
+        const masterApi = toggle.classList.contains('active') ? 1 : 0;
+        const statusDiv = document.getElementById('masterSaveStatus');
+        
+        statusDiv.textContent = '⏳ Saving...';
+        statusDiv.style.color = 'var(--text-2)';
+        
+        try {
+            const response = await fetch('/admin/update-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ master_api: masterApi, maintenance_message: message })
+            });
+            const data = await response.json();
+            if (data.success) {
+                statusDiv.textContent = '✅ Settings saved successfully!';
+                statusDiv.style.color = 'var(--emerald)';
             } else {
-                document.getElementById('editNoteEnabled').checked = false;
-                document.getElementById('editKeyNote').disabled = true;
-                document.getElementById('editKeyNote').value = '';
+                statusDiv.textContent = '❌ Failed to save';
+                statusDiv.style.color = 'var(--rose)';
             }
+        } catch(e) {
+            statusDiv.textContent = '❌ Error: ' + e.message;
+            statusDiv.style.color = 'var(--rose)';
+        }
+    }
+
+    // Generate Key Helpers
+    function toggleCustomKey() {
+        const cb = document.getElementById('enableCustomKey');
+        document.getElementById('customKey').style.display = cb.checked ? 'block' : 'none';
+    }
+
+    function toggleKeyNote() {
+        const cb = document.getElementById('enableNote');
+        document.getElementById('keyNote').style.display = cb.checked ? 'block' : 'none';
+    }
+
+    function toggleCustomExpiry() {
+        const select = document.getElementById('expirySelect');
+        const div = document.getElementById('customExpiryDiv');
+        div.style.display = select.value === 'custom' ? 'block' : 'none';
+    }
+
+    function toggleLimitInput() {
+        const isLimited = document.getElementById('limitedRadio').checked;
+        document.getElementById('maxTotalHitsDiv').style.display = isLimited ? 'block' : 'none';
+    }
+
+    function selectAll() {
+        document.querySelectorAll('.api-checkbox').forEach(cb => cb.checked = true);
+    }
+
+    function deselectAll() {
+        document.querySelectorAll('.api-checkbox').forEach(cb => cb.checked = false);
+    }
+
+    // Edit Modal
+    function openEditModal(id, name, expiresAt, status, unlimited, noteEnabled, keyNote) {
+        document.getElementById('editKeyId').value = id;
+        document.getElementById('editName').value = name || '';
+        document.getElementById('editStatus').value = status || 'active';
+        document.getElementById('editUnlimited').checked = unlimited == 1;
+        document.getElementById('editNoteEnabled').checked = noteEnabled == 1;
+        
+        if (noteEnabled == 1) {
+            document.getElementById('editKeyNote').value = keyNote || '';
+            document.getElementById('editKeyNote').style.display = 'block';
+        }
+        
+        if (expiresAt) {
+            const date = new Date(expiresAt);
+            document.getElementById('editDate').value = date.toISOString().split('T')[0];
+            document.getElementById('editTime').value = date.toTimeString().slice(0,5);
+        }
+        
+        document.getElementById('editModal').classList.add('active');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').classList.remove('active');
+    }
+
+    function toggleEditNote() {
+        const cb = document.getElementById('editNoteEnabled');
+        document.getElementById('editKeyNote').style.display = cb.checked ? 'block' : 'none';
+    }
+
+    // Countdown Timers
+    function updateTimers() {
+        document.querySelectorAll('[data-expires]').forEach(el => {
+            const expiresAt = el.dataset.expires;
+            if (!expiresAt) return;
             
-            // Set expiry
-            if (expiresAt) {
-                const date = new Date(expiresAt);
-                const now = new Date();
-                const diffDays = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
-                let expiryOption = 'custom';
-                if (diffDays <= 3) expiryOption = '3d';
-                else if (diffDays <= 7) expiryOption = '7d';
-                else if (diffDays <= 30) expiryOption = '30d';
-                document.getElementById('editExpiry').value = expiryOption;
-                
-                if (expiryOption === 'custom') {
-                    document.getElementById('editCustomDate').value = date.toISOString().split('T')[0];
-                    document.getElementById('editCustomTime').value = date.toTimeString().slice(0,5);
-                    document.getElementById('editCustomExpiryContainer').style.display = 'block';
-                }
-            }
-            
-            // Set allowed APIs
-            try {
-                const apis = JSON.parse(allowedApis || '["all"]');
-                const checkboxes = document.querySelectorAll('.edit-api-checkbox');
-                checkboxes.forEach(cb => cb.checked = apis.includes('all') || apis.includes(cb.value));
-                document.getElementById('editSelectAll').checked = apis.includes('all');
-            } catch(e) {}
-            
-            // Set rate limits
-            document.getElementById('editRateDay').value = 100;
-            document.getElementById('editRateHour').value = 20;
-            document.getElementById('editRateMin').value = 5;
-            
-            toggleEditRateLimits();
-            document.getElementById('editModal').classList.add('active');
-        }
-
-        function closeEditModal() {
-            document.getElementById('editModal').classList.remove('active');
-        }
-
-        function toggleEditCustomExpiry() {
-            const select = document.getElementById('editExpiry');
-            const container = document.getElementById('editCustomExpiryContainer');
-            container.style.display = select.value === 'custom' ? 'block' : 'none';
-        }
-
-        function toggleEditRateLimits() {
-            const checkbox = document.getElementById('editUnlimited');
-            const container = document.getElementById('editRateLimitContainer');
-            container.style.display = checkbox.checked ? 'none' : 'grid';
-        }
-
-        function toggleEditKeyNote() {
-            const checkbox = document.getElementById('editNoteEnabled');
-            const input = document.getElementById('editKeyNote');
-            input.disabled = !checkbox.checked;
-            if (!checkbox.checked) input.value = '';
-        }
-
-        function handleEditSelectAll() {
-            const selectAll = document.getElementById('editSelectAll');
-            const checkboxes = document.querySelectorAll('.edit-api-checkbox');
-            checkboxes.forEach(cb => cb.checked = selectAll.checked);
-        }
-
-        // Edit form submission
-        document.getElementById('editKeyForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            const data = {};
-            formData.forEach((value, key) => {
-                if (key === 'selected_apis') {
-                    if (!data[key]) data[key] = [];
-                    data[key].push(value);
-                } else {
-                    data[key] = value;
-                }
-            });
-            
-            try {
-                const response = await fetch('/admin/edit-key', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                const result = await response.json();
-                if (result.success) {
-                    closeEditModal();
-                    location.reload();
-                } else {
-                    alert('Failed to update key: ' + (result.error || 'Unknown error'));
-                }
-            } catch(e) {
-                alert('Error: ' + e.message);
-            }
-        });
-
-        // ============ KEY ACTIONS ============
-        async function toggleKeyStatus(id, currentStatus) {
-            const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
-            if (!confirm(`Set key to ${newStatus}?`)) return;
-            
-            try {
-                const response = await fetch('/admin/toggle-status', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `id=${id}&status=${newStatus}`
-                });
-                location.reload();
-            } catch(e) {
-                alert('Error: ' + e.message);
-            }
-        }
-
-        async function deleteKey(id) {
-            if (!confirm('Are you sure you want to delete this key?')) return;
-            try {
-                const response = await fetch('/admin/delete-key', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `id=${id}`
-                });
-                location.reload();
-            } catch(e) {
-                alert('Error: ' + e.message);
-            }
-        }
-
-        // ============ COUNTDOWN TIMERS ============
-        function updateTimers() {
-            const keyCards = document.querySelectorAll('.key-card[data-expires]');
+            const expiry = new Date(expiresAt);
             const now = new Date();
+            const diff = expiry - now;
             
-            keyCards.forEach(card => {
-                const expiresAt = card.dataset.expires;
-                if (!expiresAt) return;
-                
-                const expiry = new Date(expiresAt);
-                const diff = expiry - now;
-                const timerEl = card.querySelector('.timer');
-                
-                if (diff <= 0) {
-                    timerEl.textContent = '🔴 EXPIRED';
-                    timerEl.className = 'timer expired';
-                    const badge = card.querySelector('.status-badge');
-                    if (badge) {
-                        badge.textContent = 'EXPIRED';
-                        badge.className = 'status-badge expired';
-                    }
-                    return;
-                }
-                
-                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-                
-                let timerText = '';
-                if (days > 0) timerText += `${days}d `;
-                if (hours > 0 || days > 0) timerText += `${hours}h `;
-                timerText += `${minutes}m ${seconds}s`;
-                
-                timerEl.textContent = `⏳ ${timerText}`;
-                timerEl.className = 'timer';
-            });
-        }
-
-        // Update timers every second
-        setInterval(updateTimers, 1000);
-        updateTimers();
-
-        // ============ KEYBOARD SHORTCUTS ============
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeEditModal();
+            if (diff <= 0) {
+                el.textContent = '🔴 EXPIRED';
+                el.style.color = 'var(--rose)';
+                return;
+            }
+            
+            const days = Math.floor(diff / (1000*60*60*24));
+            const hours = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
+            const mins = Math.floor((diff % (1000*60*60)) / (1000*60));
+            
+            let text = '';
+            if (days > 0) text += `${days}d `;
+            if (hours > 0) text += `${hours}h `;
+            text += `${mins}m`;
+            
+            el.textContent = `⏳ ${text}`;
+            el.style.color = 'var(--text-2)';
         });
+    }
 
-        // Close modal on outside click
-        document.getElementById('editModal').addEventListener('click', function(e) {
-            if (e.target === this) closeEditModal();
-        });
+    setInterval(updateTimers, 1000);
+    updateTimers();
 
-        // Reduce motion preference
-        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (prefersReducedMotion) {
-            document.documentElement.style.setProperty('--transition-duration', '0s');
-        }
-    </script>
+    // Close modal on Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeEditModal();
+    });
+</script>
 </body>
 </html>
