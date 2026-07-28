@@ -379,7 +379,7 @@
                                     <td><span class="badge badge-<%= status %>"><%= status %></span></td>
                                     <td>
                                         <div class="row-actions">
-                                            <button class="action-btn warn" title="Toggle" onclick="openEditModal(<%= key.id %>, '<%= key.name %>', '<%= key.expires_at %>', '<%= key.status %>', <%= key.unlimited_hits || 0 %>, '<%= key.note_enabled || 0 %>', '<%= (key.key_note || '').replace(/'/g, '\\'') %>')"><i class="fas fa-edit"></i></button>
+                                            <button class="action-btn warn" title="Toggle" onclick="openEditModal('<%= key.id %>', '<%= key.name || '' %>', '<%= key.expires_at || '' %>', '<%= key.status || 'active' %>', <%= key.unlimited_hits || 0 %>, <%= key.note_enabled || 0 %>, '<%= (key.key_note || '').replace(/'/g, "&apos;") %>')"><i class="fas fa-edit"></i></button>
                                             <form method="POST" action="/admin/toggle-status" style="display:contents">
                                                 <input type="hidden" name="id" value="<%= key.id %>">
                                                 <input type="hidden" name="status" value="<%= key.status %>">
@@ -526,20 +526,28 @@
     // Edit Modal
     function openEditModal(id, name, expiresAt, status, unlimited, noteEnabled, keyNote) {
         document.getElementById('editKeyId').value = id;
-        document.getElementById('editName').value = name || '';
-        document.getElementById('editStatus').value = status || 'active';
-        document.getElementById('editUnlimited').checked = unlimited == 1;
-        document.getElementById('editNoteEnabled').checked = noteEnabled == 1;
+        document.getElementById('editName').value = name;
+        document.getElementById('editStatus').value = status;
+        document.getElementById('editUnlimited').checked = unlimited == 1 || unlimited === true;
+        document.getElementById('editNoteEnabled').checked = noteEnabled == 1 || noteEnabled === true;
+        document.getElementById('editKeyNote').value = keyNote || '';
         
-        if (noteEnabled == 1) {
-            document.getElementById('editKeyNote').value = keyNote || '';
+        if (noteEnabled == 1 || noteEnabled === true) {
             document.getElementById('editKeyNote').style.display = 'block';
+        } else {
+            document.getElementById('editKeyNote').style.display = 'none';
         }
         
-        if (expiresAt) {
-            const date = new Date(expiresAt);
-            document.getElementById('editDate').value = date.toISOString().split('T')[0];
-            document.getElementById('editTime').value = date.toTimeString().slice(0,5);
+        if (expiresAt && expiresAt.trim() !== '') {
+            try {
+                const date = new Date(expiresAt);
+                if (!isNaN(date)) {
+                    document.getElementById('editDate').value = date.toISOString().split('T')[0];
+                    document.getElementById('editTime').value = date.toTimeString().slice(0,5);
+                }
+            } catch(e) {
+                console.log('Date parse error:', e);
+            }
         }
         
         document.getElementById('editModal').classList.add('active');
