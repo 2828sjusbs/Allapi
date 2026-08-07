@@ -1,604 +1,652 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OSINT API Hub — Admin</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <title>OSINT API Hub - Admin Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            cyan: '#06b6d4',
+                            emerald: '#10b981',
+                            rose: '#f43f5e',
+                            dark: '#0B0F19',
+                            card: '#111827',
+                            border: '#1F2937'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        :root {
-            --bg:        #0a0c10;
-            --surface:   #10141c;
-            --panel:     #151b27;
-            --border:    #1f2a3c;
-            --border-hi: #2a3a55;
-            --accent:    #3b82f6;
-            --accent-lo: rgba(59,130,246,.10);
-            --accent-md: rgba(59,130,246,.25);
-            --emerald:   #10b981;
-            --rose:      #f43f5e;
-            --amber:     #f59e0b;
-            --text-1:    #e8edf5;
-            --text-2:    #8a9ab5;
-            --text-3:    #4d607a;
-            --mono:      'JetBrains Mono', monospace;
-            --sans:      'Inter', system-ui, sans-serif;
-            --radius:    10px;
-            --radius-lg: 16px;
+        body { background-color: #0B0F19; color: #F3F4F6; }
+        .glass-card {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: var(--sans); background: var(--bg); color: var(--text-1); min-height: 100vh; line-height: 1.5; }
-        body::before {
-            content: '';
-            position: fixed; inset: 0;
-            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.07) 2px, rgba(0,0,0,.07) 4px);
-            pointer-events: none; z-index: 0;
-        }
-        .shell { position: relative; z-index: 1; display: flex; min-height: 100vh; }
-        .sidebar { width: 220px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 24px 0; position: fixed; inset: 0 auto 0 0; }
-        .logo { padding: 0 20px 28px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-        .logo-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; display: grid; place-items: center; font-size: 16px; }
-        .logo-text { font-weight: 700; font-size: 15px; letter-spacing: -.3px; }
-        .logo-sub  { font-size: 10px; color: var(--text-3); letter-spacing: .8px; text-transform: uppercase; }
-        .nav-label { font-size: 10px; color: var(--text-3); letter-spacing: 1px; text-transform: uppercase; padding: 0 20px 8px; }
-        .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 13px; font-weight: 500; color: var(--text-2); cursor: pointer; transition: all .15s; border-left: 2px solid transparent; text-decoration: none; }
-        .nav-item:hover  { color: var(--text-1); background: rgba(255,255,255,.03); }
-        .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-lo); }
-        .nav-item i { width: 16px; text-align: center; font-size: 13px; }
-        .sidebar-footer { margin-top: auto; padding: 16px 20px; border-top: 1px solid var(--border); }
-        .user-badge { display: flex; align-items: center; gap: 10px; font-size: 12px; }
-        .avatar { width: 30px; height: 30px; background: var(--accent-md); border: 1px solid var(--accent); border-radius: 50%; display: grid; place-items: center; font-size: 11px; color: var(--accent); font-weight: 700; }
-        .user-name  { font-weight: 600; font-size: 12px; }
-        .user-role  { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .5px; }
-        .logout-btn { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--text-2); font-size: 12px; font-family: var(--sans); cursor: pointer; text-decoration: none; transition: all .15s; width: 100%; justify-content: center; }
-        .logout-btn:hover { border-color: var(--rose); color: var(--rose); }
-        .main { margin-left: 220px; flex: 1; }
-        .topbar { height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 10; }
-        .topbar-title { font-size: 13px; font-weight: 600; color: var(--text-2); }
-        .topbar-title span { color: var(--text-1); }
-        .live-dot { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--emerald); }
-        .live-dot::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--emerald); animation: pulse 1.8s infinite; }
-        @keyframes pulse { 0%{ box-shadow:0 0 0 0 rgba(16,185,129,.5);} 70%{box-shadow:0 0 0 6px rgba(16,185,129,0);} 100%{box-shadow:0 0 0 0 rgba(16,185,129,0);} }
-        .content { padding: 28px; }
-        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
-        .stat { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px 24px; position: relative; overflow: hidden; transition: all .2s; }
-        .stat:hover { border-color: var(--border-hi); background: rgba(21,27,39,.8); }
-        .stat::after { content: ''; position: absolute; top: -40px; right: -40px; width: 100px; height: 100px; border-radius: 50%; background: var(--glow, var(--accent)); opacity: .06; }
-        .stat:nth-child(2) { --glow: var(--emerald); }
-        .stat:nth-child(3) { --glow: var(--amber); }
-        .stat:nth-child(4) { --glow: #8b5cf6; }
-        .stat-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-        .stat-val { font-family: var(--mono); font-size: 32px; font-weight: 600; letter-spacing: -1px; }
-        .stat-sub { font-size: 11px; color: var(--text-3); margin-top: 4px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
-        .panel-head { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; }
-        .panel-head i { color: var(--accent); font-size: 12px; }
-        .panel-body { padding: 20px; }
-        .field { margin-bottom: 16px; }
-        label { display: block; font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 7px; }
-        input[type="text"], input[type="number"], input[type="date"], input[type="time"], select, textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px; font-size: 13px; color: var(--text-1); font-family: var(--sans); outline: none; transition: border-color .15s; -webkit-appearance: none; }
-        input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-lo); }
-        select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238a9ab5' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
-        select option { background: var(--panel); }
-        textarea { resize: vertical; min-height: 80px; }
-        input::placeholder { color: var(--text-3); }
-        small.hint { font-size: 10px; color: var(--text-3); margin-top: 4px; display: block; }
-        .toggle-group { display: flex; gap: 8px; }
-        .toggle-opt { flex: 1; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text-2); transition: all .15s; user-select: none; }
-        .toggle-opt input { display: none; }
-        .toggle-opt:has(input:checked) { border-color: var(--accent); background: var(--accent-lo); color: var(--accent); }
-        .toggle-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-hi); flex-shrink: 0; transition: all .15s; }
-        .toggle-opt:has(input:checked) .toggle-dot { border-color: var(--accent); background: var(--accent); box-shadow: 0 0 0 3px var(--accent-lo); }
-        .api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 220px; overflow-y: auto; }
-        .api-grid::-webkit-scrollbar { width: 4px; }
-        .api-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-        .api-chip { display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; font-size: 11px; color: var(--text-2); transition: all .15s; }
-        .api-chip input { display: none; }
-        .api-chip:has(input:checked) { border-color: var(--accent); background: var(--accent-lo); color: var(--accent); }
-        .chip-box { width: 13px; height: 13px; border: 1.5px solid var(--border-hi); border-radius: 3px; flex-shrink: 0; display: grid; place-items: center; transition: all .15s; }
-        .api-chip:has(input:checked) .chip-box { background: var(--accent); border-color: var(--accent); }
-        .chip-box::after { content: ''; width: 5px; height: 5px; border-bottom: 1.5px solid white; border-right: 1.5px solid white; transform: rotate(45deg) translate(-1px,-1px); opacity: 0; transition: opacity .1s; }
-        .api-chip:has(input:checked) .chip-box::after { opacity: 1; }
-        .api-actions { display: flex; gap: 6px; margin-bottom: 10px; }
-        .btn-xs { padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: var(--bg); color: var(--text-2); cursor: pointer; transition: all .15s; font-family: var(--sans); }
-        .btn-xs:hover { border-color: var(--accent); color: var(--accent); }
-        .btn-primary { width: 100%; padding: 11px; background: var(--accent); border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600; color: white; cursor: pointer; font-family: var(--sans); transition: all .15s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
-        .btn-primary:hover { background: #2563eb; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(59,130,246,.3); }
-        .tbl-wrap { overflow: auto; max-height: 540px; }
-        .tbl-wrap::-webkit-scrollbar { width: 4px; }
-        .tbl-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        thead th { padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .7px; border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; background: var(--panel); }
-        tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
-        tbody tr:last-child { border-bottom: none; }
-        tbody tr:hover { background: rgba(255,255,255,.02); }
-        td { padding: 11px 14px; vertical-align: middle; }
-        .key-code { font-family: var(--mono); font-size: 11px; background: var(--bg); border: 1px solid var(--border); padding: 3px 7px; border-radius: 4px; color: var(--accent); }
-        .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
-        .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
-        .badge-active  { background: rgba(16,185,129,.12); color: #10b981; border: 1px solid rgba(16,185,129,.25); }
-        .badge-active::before { background: #10b981; }
-        .badge-disabled { background: rgba(244,63,94,.1); color: #f43f5e; border: 1px solid rgba(244,63,94,.2); }
-        .badge-disabled::before { background: #f43f5e; }
-        .badge-expired { background: rgba(245,158,11,.1); color: #f59e0b; border: 1px solid rgba(245,158,11,.2); }
-        .badge-expired::before { background: #f59e0b; }
-        .row-actions { display: flex; gap: 5px; }
-        .action-btn { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text-2); cursor: pointer; font-size: 11px; transition: all .15s; }
-        .action-btn.warn:hover { border-color: #f59e0b; color: #f59e0b; background: rgba(245,158,11,.08); }
-        .action-btn.danger:hover { border-color: #f43f5e; color: #f43f5e; background: rgba(244,63,94,.08); }
-        
-        /* MASTER API CARD */
-        .master-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; }
-        .master-head { font-size: 13px; font-weight: 600; color: var(--accent); margin-bottom: 16px; }
-        .toggle-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-        .toggle-switch { width: 50px; height: 28px; background: rgba(148,163,184,.2); border: 1px solid var(--border); border-radius: 14px; cursor: pointer; position: relative; transition: all .3s; }
-        .toggle-switch.active { background: rgba(16,185,129,.3); border-color: var(--emerald); }
-        .toggle-switch .slider { position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; background: white; border-radius: 11px; transition: all .3s; box-shadow: 0 2px 4px rgba(0,0,0,.2); }
-        .toggle-switch.active .slider { left: 24px; }
-        .toggle-status { font-weight: 600; font-size: 13px; color: var(--text-2); }
-        .toggle-status.on { color: var(--emerald); }
-        .toggle-status.off { color: var(--rose); }
-        
-        /* TIMER */
-        .timer-display { font-family: var(--mono); font-size: 13px; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--accent); margin: 8px 0; }
-        .timer-display.expired { color: var(--rose); border-color: rgba(244,63,94,.3); }
-        
-        /* MODAL */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.7); z-index: 1000; align-items: center; justify-content: center; }
-        .modal.active { display: flex; }
-        .modal-content { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
-        .modal-head { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 16px; }
-        .modal-close { float: right; background: none; border: none; color: var(--text-2); cursor: pointer; font-size: 16px; }
-        .modal-close:hover { color: var(--rose); }
-        .btn-modal-submit { width: 100%; padding: 10px; background: var(--accent); color: white; border: none; border-radius: var(--radius); font-weight: 600; cursor: pointer; margin-top: 12px; transition: all .15s; }
-        .btn-modal-submit:hover { background: #2563eb; }
-        
-        .foot { text-align: center; padding: 20px 0 28px; font-size: 11px; color: var(--text-3); border-top: 1px solid var(--border); margin-top: 28px; }
-        .foot a { color: var(--accent); text-decoration: none; }
-        @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 768px) { .sidebar { display: none; } .main { margin-left: 0; } .stats { grid-template-columns: 1fr; } }
-        .hidden { display: none !important; }
+        .glow-cyan { box-shadow: 0 0 20px rgba(6, 182, 212, 0.15); }
+        .glow-indigo { box-shadow: 0 0 20px rgba(99, 102, 241, 0.15); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0B0F19; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1F2937; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #374151; }
     </style>
 </head>
-<body>
-<div class="shell">
-    <aside class="sidebar">
-        <div class="logo">
-            <div class="logo-icon"><i class="fas fa-satellite-dish"></i></div>
-            <div>
-                <div class="logo-text">OSINT Hub</div>
-                <div class="logo-sub">API Control</div>
-            </div>
-        </div>
-        <div class="nav-label">Overview</div>
-        <a class="nav-item active" href="#"><i class="fas fa-gauge-high"></i> Dashboard</a>
-        <div class="nav-label" style="margin-top:12px;">Manage</div>
-        <a class="nav-item" href="#gen"><i class="fas fa-plus"></i> Generate Key</a>
-        <a class="nav-item" href="#keys"><i class="fas fa-key"></i> API Keys</a>
-        <div class="sidebar-footer">
-            <div class="user-badge">
-                <div class="avatar"><%= user.username[0].toUpperCase() %></div>
-                <div>
-                    <div class="user-name"><%= user.username %></div>
-                    <div class="user-role"><%= user.role %></div>
-                </div>
-            </div>
-            <a href="/logout" class="logout-btn"><i class="fas fa-arrow-right-from-bracket"></i> Sign Out</a>
-        </div>
-    </aside>
+<body class="font-sans antialiased custom-scrollbar min-h-screen flex flex-col justify-between">
 
-    <main class="main">
-        <div class="topbar">
-            <div class="topbar-title">Dashboard <span>/ Overview</span></div>
-            <div class="live-dot">System Online</div>
-        </div>
-        <div class="content">
-            <div class="stats">
-                <div class="stat">
-                    <div class="stat-label"><i class="fas fa-bolt"></i> Total API Hits</div>
-                    <div class="stat-val"><%= (totalHits ?? 0).toLocaleString() %></div>
-                    <div class="stat-sub">All-time requests</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-label"><i class="fas fa-key"></i> Total Keys</div>
-                    <div class="stat-val"><%= keys.length %></div>
-                    <div class="stat-sub">Issued credentials</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-label"><i class="fas fa-circle-check"></i> Active Keys</div>
-                    <div class="stat-val"><%= active %></div>
-                    <div class="stat-sub">Currently live</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-label"><i class="fas fa-cube"></i> Available APIs</div>
-                    <div class="stat-val"><%= apis.length %></div>
-                    <div class="stat-sub">API endpoints</div>
-                </div>
-            </div>
-
-            <!-- Master API Card -->
-            <div class="master-card" id="masterCard">
-                <div class="master-head"><i class="fas fa-server"></i> Master API Control</div>
-                <div class="toggle-row">
-                    <div class="toggle-switch <%= settings && settings.master_api == 1 ? 'active' : '' %>" id="masterToggle" onclick="toggleMasterApi()">
-                        <div class="slider"></div>
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-40 border-b border-gray-800/80 bg-brand-dark/90 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-cyan flex items-center justify-center shadow-lg shadow-brand-500/20">
+                        <i class="fa-solid fa-terminal text-white text-lg"></i>
                     </div>
-                    <span class="toggle-status <%= settings && settings.master_api == 1 ? 'on' : 'off' %>" id="masterStatus">
-                        <%= settings && settings.master_api == 1 ? '🟢 ONLINE' : '🔴 OFFLINE' %>
-                    </span>
-                </div>
-                <div class="field">
-                    <label>Maintenance Message</label>
-                    <textarea id="maintenanceMessage" placeholder="Enter maintenance message..."><%= settings && settings.maintenance_message ? settings.maintenance_message : 'API is under maintenance.' %></textarea>
-                    <button class="btn-primary" onclick="saveMasterSettings()" style="margin-top:10px;"><i class="fas fa-save"></i> Save Settings</button>
-                    <div id="masterSaveStatus" style="font-size:11px;margin-top:8px;"></div>
-                </div>
-            </div>
-
-            <div class="grid">
-                <div class="panel" id="gen">
-                    <div class="panel-head"><i class="fas fa-plus-circle"></i> Generate New Key</div>
-                    <div class="panel-body">
-                        <form method="POST" action="/admin/generate-key">
-                            <div class="field">
-                                <label>Customer Name</label>
-                                <input type="text" name="name" placeholder="e.g. John Doe" required>
-                            </div>
-                            <div class="field">
-                                <label>App Name</label>
-                                <input type="text" name="app_name" placeholder="e.g. OSINT Scanner v2">
-                            </div>
-                            <div class="field">
-                                <label>Custom API Key <span style="color:var(--text-3);font-size:10px;">(optional)</span></label>
-                                <div style="display:flex;align-items:center;gap:8px;">
-                                    <label class="toggle-opt" style="flex:0 0 auto;padding:8px 12px;">
-                                        <input type="checkbox" id="enableCustomKey" name="enable_custom" value="on" onchange="toggleCustomKey()">
-                                        <div class="toggle-dot"></div>
-                                        <span style="font-size:12px;">Enable</span>
-                                    </label>
-                                    <input type="text" name="custom_key" id="customKey" placeholder="SAHIL, ERAAA, OSINT…" style="display:none;flex:1;">
-                                </div>
-                            </div>
-                            <div class="field">
-                                <label>Key Note <span style="color:var(--text-3);font-size:10px;">(optional)</span></label>
-                                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                                    <label class="toggle-opt" style="flex:0 0 auto;padding:8px 12px;">
-                                        <input type="checkbox" id="enableNote" name="note_enabled" value="on" onchange="toggleKeyNote()">
-                                        <div class="toggle-dot"></div>
-                                        <span style="font-size:12px;">Enable</span>
-                                    </label>
-                                </div>
-                                <input type="text" name="key_note" id="keyNote" placeholder="e.g. Premium Customer" style="display:none;">
-                            </div>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                                <div class="field">
-                                    <label>Validity</label>
-                                    <select name="expiry" id="expirySelect" onchange="toggleCustomExpiry()">
-                                        <option value="7d">7 Days</option>
-                                        <option value="15d">15 Days</option>
-                                        <option value="1m" selected>30 Days</option>
-                                        <option value="1y">1 Year</option>
-                                        <option value="custom">Custom Date</option>
-                                        <option value="">No Expiry</option>
-                                    </select>
-                                </div>
-                                <div class="field">
-                                    <label>Daily Limit</label>
-                                    <input type="number" name="daily_limit" value="100">
-                                    <small class="hint">0 = unlimited</small>
-                                </div>
-                            </div>
-                            <div id="customExpiryDiv" class="field hidden" style="display:none;">
-                                <label>Custom Expiry Date & Time</label>
-                                <input type="date" name="custom_expiry_date" id="customDate">
-                                <input type="time" name="custom_expiry_time" id="customTime" style="margin-top:8px;">
-                            </div>
-                            <div class="field">
-                                <label>Hits Limit</label>
-                                <div class="toggle-group">
-                                    <label class="toggle-opt">
-                                        <input type="radio" name="limit_type" id="unlimitedRadio" value="unlimited" onchange="toggleLimitInput()" checked>
-                                        <div class="toggle-dot"></div>
-                                        Unlimited
-                                    </label>
-                                    <label class="toggle-opt">
-                                        <input type="radio" name="limit_type" id="limitedRadio" value="limited" onchange="toggleLimitInput()">
-                                        <div class="toggle-dot"></div>
-                                        One-time Cap
-                                    </label>
-                                </div>
-                            </div>
-                            <div id="maxTotalHitsDiv" class="field hidden" style="display:none;">
-                                <label>Max Total Hits</label>
-                                <input type="number" name="max_total_hits" value="20">
-                            </div>
-                            <div class="field">
-                                <label>Rate Limits</label>
-                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                                    <div>
-                                        <label style="font-size:10px;color:var(--text-3);">Per Hour</label>
-                                        <input type="number" name="rate_limit_hour" value="20" placeholder="20">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:10px;color:var(--text-3);">Per Minute</label>
-                                        <input type="number" name="rate_limit_minute" value="5" placeholder="5">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="field">
-                                <label>IP Whitelist</label>
-                                <input type="text" name="ip_whitelist" placeholder="192.168.1.1, 10.0.0.1">
-                                <small class="hint">Leave blank to allow all IPs</small>
-                            </div>
-                            <div class="field">
-                                <label>Allowed APIs</label>
-                                <div class="api-actions">
-                                    <button type="button" class="btn-xs" onclick="selectAll()">Select All</button>
-                                    <button type="button" class="btn-xs" onclick="deselectAll()">Deselect All</button>
-                                </div>
-                                <div class="api-grid">
-                                    <% apis.forEach(api => { %>
-                                    <label class="api-chip">
-                                        <input type="checkbox" name="allowed_apis" value="<%= api.name %>" class="api-checkbox">
-                                        <div class="chip-box"></div>
-                                        <%= api.display_name %>
-                                    </label>
-                                    <% }); %>
-                                </div>
-                                <small class="hint">Leave all unchecked to allow every API</small>
-                            </div>
-                            <button type="submit" class="btn-primary"><i class="fas fa-key"></i> Generate Key</button>
-                        </form>
+                    <div>
+                        <span class="text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-200 to-gray-400">OSINT <span class="text-brand-cyan">HUB</span></span>
+                        <span class="block text-[10px] font-mono text-gray-400 uppercase tracking-widest">Admin Control Panel</span>
                     </div>
                 </div>
-
-                <div class="panel" id="keys">
-                    <div class="panel-head">
-                        <i class="fas fa-list-ul"></i> API Keys
-                        <span style="margin-left:auto;font-size:11px;color:var(--text-3);font-weight:400;"><%= keys.length %> total</span>
+                <div class="flex items-center gap-4">
+                    <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-900 border border-gray-800 text-xs">
+                        <span class="relative flex h-2 w-2">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-emerald opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-2 w-2 bg-brand-emerald"></span>
+                        </span>
+                        <span class="text-gray-300 font-mono"><%= user ? user.username : 'Admin' %></span>
+                        <span class="text-xs px-2 py-0.5 rounded bg-brand-600/30 text-brand-500 font-semibold border border-brand-500/30 uppercase"><%= user ? user.role : 'Admin' %></span>
                     </div>
-                    <div class="tbl-wrap">
-                        <table>
-                            <thead>
-                                <tr><th>Key</th><th>Name</th><th>Hits</th><th>Expires</th><th>Status</th><th></th></tr>
-                            </thead>
-                            <tbody>
-                                <% keys.forEach(key => { 
-                                    const isExpired = key.expires_at && new Date(key.expires_at) < new Date();
-                                    const status = isExpired ? 'expired' : (key.status || 'active');
-                                %>
-                                <tr>
-                                    <td><span class="key-code"><%= key.key %></span></td>
-                                    <td style="color:var(--text-2);font-size:12px;"><%= key.name || key.app_name || '—' %></td>
-                                    <td style="font-family:var(--mono);font-size:11px;color:var(--text-2);"><%= key.hits %><span style="color:var(--text-3)">/<%= key.max_total_hits || '∞' %></span></td>
-                                    <td style="font-size:11px;"><span id="timer-<%= key.id %>" data-expires="<%= key.expires_at %>">—</span></td>
-                                    <td><span class="badge badge-<%= status %>"><%= status %></span></td>
-                                    <td>
-                                        <div class="row-actions">
-                                            <button class="action-btn warn" title="Toggle" onclick="openEditModal('<%= key.id %>', '<%= key.name || '' %>', '<%= key.expires_at || '' %>', '<%= key.status || 'active' %>', <%= key.unlimited_hits || 0 %>, <%= key.note_enabled || 0 %>, '<%= (key.key_note || '').replace(/'/g, "&apos;") %>')"><i class="fas fa-edit"></i></button>
-                                            <form method="POST" action="/admin/toggle-status" style="display:contents">
+                    <a href="/logout" class="px-3.5 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium border border-red-500/20 transition flex items-center gap-2">
+                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full mb-auto">
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+            <div class="glass-card rounded-2xl p-5 glow-indigo relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Total API Keys</p>
+                        <h3 class="text-3xl font-extrabold mt-1 text-white font-mono"><%= keys.length %></h3>
+                    </div>
+                    <div class="p-3 bg-brand-500/10 border border-brand-500/20 text-brand-500 rounded-xl">
+                        <i class="fa-solid fa-key text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 text-xs text-gray-400">Registered system access keys</div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-5 glow-cyan relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Active Keys</p>
+                        <h3 class="text-3xl font-extrabold mt-1 text-emerald-400 font-mono"><%= active %></h3>
+                    </div>
+                    <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl">
+                        <i class="fa-solid fa-shield-check text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 text-xs text-emerald-400/80">
+                    <i class="fa-solid fa-arrow-up text-[10px] mr-1"></i> Ready for execution
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Total Requests (Hits)</p>
+                        <h3 class="text-3xl font-extrabold mt-1 text-brand-cyan font-mono"><%= totalHits %></h3>
+                    </div>
+                    <div class="p-3 bg-cyan-500/10 border border-cyan-500/20 text-brand-cyan rounded-xl">
+                        <i class="fa-solid fa-chart-network text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 text-xs text-gray-400">Cumulative API call count</div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Available Endpoints</p>
+                        <h3 class="text-3xl font-extrabold mt-1 text-purple-400 font-mono"><%= apis.length %></h3>
+                    </div>
+                    <div class="p-3 bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded-xl">
+                        <i class="fa-solid fa-cubes text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-4 text-xs text-gray-400">Active server modules</div>
+            </div>
+        </div>
+
+        <!-- System Message & Quick Action Bar -->
+        <div class="glass-card rounded-2xl p-6 mb-8">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-bullhorn text-amber-400 text-sm"></i>
+                        <h4 class="text-sm font-semibold text-gray-200 uppercase tracking-wider">System Maintenance Banner</h4>
+                    </div>
+                    <form action="/admin/update-settings" method="POST" class="flex flex-col sm:flex-row gap-3">
+                        <input type="text" name="maintenance_message" value="<%= settings.maintenance_message %>" placeholder="Enter maintenance banner message..." 
+                            class="flex-1 bg-gray-900 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-brand-500 transition">
+                        <button type="submit" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-medium transition flex items-center justify-center gap-2 shadow-lg shadow-brand-600/20">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Notice
+                        </button>
+                    </form>
+                </div>
+                <div class="flex items-end">
+                    <button onclick="openModal('generateModal')" class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-brand-cyan to-brand-500 hover:from-cyan-500 hover:to-brand-600 text-white font-semibold rounded-xl text-sm shadow-lg shadow-cyan-500/20 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus-hexagon text-base"></i> Generate New Key
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Keys Management Table -->
+        <div class="glass-card rounded-2xl overflow-hidden border border-gray-800">
+            <!-- Table Header Controls -->
+            <div class="p-5 border-b border-gray-800/80 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-900/40">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-lg font-bold text-white tracking-wide">API Access Keys</h2>
+                    <span class="text-xs font-mono bg-gray-800 border border-gray-700 text-gray-300 px-2.5 py-1 rounded-full"><%= keys.length %> Total</span>
+                </div>
+                <div class="flex flex-col sm:flex-row items-center gap-3">
+                    <div class="relative w-full sm:w-64">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-xs text-gray-500"></i>
+                        <input type="text" id="searchInput" onkeyup="filterKeys()" placeholder="Search key, name..." 
+                            class="w-full bg-gray-900/80 border border-gray-800 rounded-xl pl-9 pr-4 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-brand-500 transition">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Responsive Table -->
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left border-collapse" id="keysTable">
+                    <thead>
+                        <tr class="bg-gray-900/80 text-[11px] font-mono uppercase tracking-wider text-gray-400 border-b border-gray-800">
+                            <th class="py-3.5 px-4 font-semibold">Label / Owner</th>
+                            <th class="py-3.5 px-4 font-semibold">API Key</th>
+                            <th class="py-3.5 px-4 font-semibold">Assigned API</th>
+                            <th class="py-3.5 px-4 font-semibold">Usage (Hits)</th>
+                            <th class="py-3.5 px-4 font-semibold">Expiration</th>
+                            <th class="py-3.5 px-4 font-semibold">Status</th>
+                            <th class="py-3.5 px-4 font-semibold text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800/60 text-xs">
+                        <% if (keys && keys.length > 0) { %>
+                            <% keys.forEach(function(key) { %>
+                                <tr class="hover:bg-gray-800/30 transition group">
+                                    <!-- Label / Owner -->
+                                    <td class="py-4 px-4">
+                                        <div class="font-semibold text-gray-200 text-sm"><%= key.name || 'Unnamed Key' %></div>
+                                        <div class="text-[10px] text-gray-500 font-mono mt-0.5"><%= key.owner_username || owner %></div>
+                                        <% if(key.note_enabled && key.key_note) { %>
+                                            <div class="mt-1 text-[10px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded w-fit inline-flex items-center gap-1">
+                                                <i class="fa-solid fa-sticky-note text-[9px]"></i> <%= key.key_note %>
+                                            </div>
+                                        <% } %>
+                                    </td>
+
+                                    <!-- Key String -->
+                                    <td class="py-4 px-4 font-mono">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-brand-cyan bg-cyan-950/40 border border-cyan-800/40 px-2.5 py-1 rounded-md tracking-wider"><%= key.key %></span>
+                                            <button onclick="copyToClipboard('<%= key.key %>')" class="text-gray-500 hover:text-white transition p-1" title="Copy Key">
+                                                <i class="fa-regular fa-copy"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+
+                                    <!-- Allowed API -->
+                                    <td class="py-4 px-4 font-mono">
+                                        <% 
+                                            let allowed = 'All APIs';
+                                            try {
+                                                let parsed = JSON.parse(key.allowed_apis);
+                                                if (Array.isArray(parsed) && !parsed.includes('all')) {
+                                                    allowed = parsed.join(', ');
+                                                }
+                                            } catch(e){}
+                                        %>
+                                        <span class="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-gray-300 text-[11px]">
+                                            <i class="fa-solid fa-cube text-brand-500 mr-1 text-[10px]"></i><%= allowed %>
+                                        </span>
+                                    </td>
+
+                                    <!-- Hits / Limits -->
+                                    <td class="py-4 px-4 font-mono">
+                                        <div class="font-bold text-white"><%= key.hits %> hits</div>
+                                        <div class="text-[10px] text-gray-400 mt-0.5">
+                                            <% if (key.unlimited_hits) { %>
+                                                <span class="text-emerald-400 font-semibold"><i class="fa-solid fa-infinity"></i> Unlimited</span>
+                                            <% } else if(key.rate_limit_enabled) { %>
+                                                <%= key.rate_limit_per_day %>/day
+                                            <% } else { %>
+                                                Standard
+                                            <% } %>
+                                        </div>
+                                    </td>
+
+                                    <!-- Expiration -->
+                                    <td class="py-4 px-4">
+                                        <% if (!key.expires_at) { %>
+                                            <span class="text-gray-400 font-mono text-[11px]">Never</span>
+                                        <% } else { 
+                                            let exp = new Date(key.expires_at);
+                                            let isExpired = exp < new Date();
+                                        %>
+                                            <div class="font-mono text-[11px] <%= isExpired ? 'text-red-400 line-through' : 'text-gray-300' %>">
+                                                <%= exp.toLocaleDateString() %>
+                                            </div>
+                                            <div class="text-[10px] text-gray-500"><%= exp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %></div>
+                                        <% } %>
+                                    </td>
+
+                                    <!-- Status Badge -->
+                                    <td class="py-4 px-4">
+                                        <div class="flex items-center gap-1.5">
+                                            <% if (key.api_enabled === 0) { %>
+                                                <span class="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/20 inline-flex items-center gap-1">
+                                                    <i class="fa-solid fa-ban text-[8px]"></i> Disabled
+                                                </span>
+                                            <% } else if (key.status === 'active') { %>
+                                                <span class="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1">
+                                                    <i class="fa-solid fa-circle text-[6px]"></i> Active
+                                                </span>
+                                            <% } else { %>
+                                                <span class="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 inline-flex items-center gap-1">
+                                                    <i class="fa-solid fa-circle text-[6px]"></i> <%= key.status %>
+                                                </span>
+                                            <% } %>
+                                        </div>
+                                    </td>
+
+                                    <!-- Actions -->
+                                    <td class="py-4 px-4 text-right">
+                                        <div class="flex items-center justify-end gap-2">
+                                            <!-- Edit Key Modal Trigger -->
+                                            <button onclick="openEditModal('<%= JSON.stringify(key) %>')" class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white transition" title="Edit Parameters">
+                                                <i class="fa-solid fa-pen-to-square"></i>
+                                            </button>
+
+                                            <!-- Toggle Status Form -->
+                                            <form action="/admin/toggle-status" method="POST" class="inline">
                                                 <input type="hidden" name="id" value="<%= key.id %>">
                                                 <input type="hidden" name="status" value="<%= key.status %>">
-                                                <button type="submit" class="action-btn warn" title="Toggle Status"><i class="fas fa-power-off"></i></button>
+                                                <button type="submit" class="p-2 rounded-lg bg-gray-800 hover:bg-amber-500/20 text-gray-300 hover:text-amber-400 transition" title="Toggle Active/Disabled">
+                                                    <i class="fa-solid fa-power-off"></i>
+                                                </button>
                                             </form>
-                                            <form method="POST" action="/admin/delete-key" style="display:contents" onsubmit="return confirm('Delete this key?')">
+
+                                            <!-- Delete Key Form -->
+                                            <form action="/admin/delete-key" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to permanently remove this key?')">
                                                 <input type="hidden" name="id" value="<%= key.id %>">
-                                                <button type="submit" class="action-btn danger" title="Delete"><i class="fas fa-trash"></i></button>
+                                                <button type="submit" class="p-2 rounded-lg bg-gray-800 hover:bg-red-500/20 text-gray-300 hover:text-red-400 transition" title="Delete Key">
+                                                    <i class="fa-solid fa-trash-can"></i>
+                                                </button>
                                             </form>
                                         </div>
                                     </td>
                                 </tr>
-                                <% }); %>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="foot">
-                Owner: <a href="#">@BMW_AURA5</a> &nbsp;·&nbsp; Channel: <a href="#">@OSINT_ERA1</a>
+                            <% }); %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="7" class="py-12 text-center text-gray-500">
+                                    <i class="fa-solid fa-key-skeleton text-3xl mb-3 block opacity-40"></i>
+                                    No API Keys found in system records. Generate your first key above.
+                                </td>
+                            </tr>
+                        <% } %>
+                    </tbody>
+                </table>
             </div>
         </div>
     </main>
-</div>
 
-<!-- Edit Modal -->
-<div class="modal" id="editModal">
-    <div class="modal-content">
-        <button class="modal-close" onclick="closeEditModal()">&times;</button>
-        <div class="modal-head"><i class="fas fa-edit"></i> Edit API Key</div>
-        <form id="editForm" method="POST" action="/admin/edit-key">
-            <input type="hidden" name="key_id" id="editKeyId">
-            
-            <div class="field">
-                <label>Key Name</label>
-                <input type="text" name="name" id="editName" required>
+    <!-- Footer -->
+    <footer class="border-t border-gray-800/80 bg-brand-dark/90 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-gray-500 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+                Designed for <span class="text-gray-300 font-semibold"><%= owner %></span> &bull; Powered by OSINT Core
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="<%= channel %>" target="_blank" class="text-brand-cyan hover:underline flex items-center gap-1">
+                    <i class="fa-brands fa-telegram"></i> Join Channel
+                </a>
+                <a href="/endpoints" class="text-gray-400 hover:text-white transition">Endpoints API</a>
+                <a href="/docs" class="text-gray-400 hover:text-white transition">Documentation</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- GENERATE KEY MODAL -->
+    <div id="generateModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-card w-full max-w-lg rounded-2xl border border-gray-800 overflow-hidden shadow-2xl my-8">
+            <div class="p-5 border-b border-gray-800 flex items-center justify-between bg-gray-900/60">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-key text-brand-cyan"></i> Generate New API Key
+                </h3>
+                <button onclick="closeModal('generateModal')" class="text-gray-400 hover:text-white text-lg">&times;</button>
             </div>
             
-            <div class="field">
-                <label>Expiry Date</label>
-                <input type="date" name="custom_expiry_date" id="editDate">
-                <input type="time" name="custom_expiry_time" id="editTime" style="margin-top:8px;">
-                <small class="hint">Leave empty for no expiry</small>
-            </div>
-            
-            <div class="field">
-                <label>Status</label>
-                <select name="status" id="editStatus">
-                    <option value="active">Active</option>
-                    <option value="disabled">Disabled</option>
-                    <option value="expired">Expired</option>
-                </select>
-            </div>
-            
-            <div class="field">
-                <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:normal;margin-bottom:0;">
-                    <input type="checkbox" name="unlimited_hits" id="editUnlimited"> Unlimited Hits
-                </label>
-            </div>
-            
-            <div class="field">
-                <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-weight:normal;margin-bottom:0;">
-                    <input type="checkbox" name="note_enabled" id="editNoteEnabled" onchange="toggleEditNote()"> Add Note
-                </label>
-                <input type="text" name="key_note" id="editKeyNote" placeholder="e.g., Premium Customer" style="margin-top:8px;display:none;">
-            </div>
-            
-            <button type="submit" class="btn-modal-submit"><i class="fas fa-save"></i> Save Changes</button>
-        </form>
+            <form action="/admin/generate-key" method="POST" class="p-6 space-y-4">
+                
+                <!-- Label / Key Name -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1">Key Label / Client Name</label>
+                    <input type="text" name="name" required placeholder="e.g. Premium Client - Sahil" 
+                        class="w-full bg-gray-900 border border-gray-800 rounded-xl px-3.5 py-2.5 text-xs text-gray-200 focus:outline-none focus:border-brand-500 transition">
+                </div>
+
+                <!-- Custom Key Option -->
+                <div class="p-3 bg-gray-900/60 border border-gray-800 rounded-xl space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label for="enable_custom" class="text-xs font-semibold text-gray-300">Custom Key String</label>
+                        <input type="checkbox" id="enable_custom" name="enable_custom" onchange="toggleCustomKeyInput(this.checked)" class="rounded bg-gray-800 border-gray-700 text-brand-500 focus:ring-0">
+                    </div>
+                    <input type="text" id="custom_key_input" name="custom_key" disabled placeholder="e.g. SAHIL_VIP_99" 
+                        class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-400 focus:outline-none focus:border-brand-500 transition disabled:opacity-40">
+                </div>
+
+                <!-- Single API Selection -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1">Allowed API Endpoint</label>
+                    <select name="selected_api" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-3.5 py-2.5 text-xs text-gray-200 focus:outline-none focus:border-brand-500 transition">
+                        <option value="all">⚡ All Endpoints (Full Access)</option>
+                        <% apis.forEach(function(api) { %>
+                            <option value="<%= api.name %>"><%= api.display_name %> (<%= api.endpoint %>)</option>
+                        <% }); %>
+                    </select>
+                </div>
+
+                <!-- Expiry Options -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 mb-1">Validity Period</label>
+                        <select name="expiry" id="expirySelect" onchange="toggleCustomExpiry(this.value)" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-3.5 py-2.5 text-xs text-gray-200 focus:outline-none focus:border-brand-500 transition">
+                            <option value="never">Lifetime (No Expiry)</option>
+                            <option value="3d">3 Days</option>
+                            <option value="7d">7 Days</option>
+                            <option value="30d">30 Days</option>
+                            <option value="custom">Custom Date</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 mb-1">Unlimited Usage</label>
+                        <select name="unlimited_hits" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-3.5 py-2.5 text-xs text-gray-200 focus:outline-none focus:border-brand-500 transition">
+                            <option value="false">No (Rate Limited)</option>
+                            <option value="true">Yes (Bypass Rate Limits)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Custom Expiry Pickers -->
+                <div id="customExpiryContainer" class="hidden grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                        <label class="block text-[11px] text-gray-400 mb-1">Expiry Date</label>
+                        <input type="date" name="custom_expiry_date" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-200">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-gray-400 mb-1">Expiry Time</label>
+                        <input type="time" name="custom_expiry_time" value="23:59" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-200">
+                    </div>
+                </div>
+
+                <!-- Rate Limit Configuration -->
+                <div class="p-3 bg-gray-900/60 border border-gray-800 rounded-xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-semibold text-gray-300">Enable Rate Limits</label>
+                        <input type="checkbox" name="rate_limit_enabled" checked class="rounded bg-gray-800 border-gray-700 text-brand-500">
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                            <span class="text-[10px] text-gray-400">Daily</span>
+                            <input type="number" name="rate_limit_per_day" value="100" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-1.5 text-center text-gray-200">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-gray-400">Hourly</span>
+                            <input type="number" name="rate_limit_per_hour" value="20" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-1.5 text-center text-gray-200">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-gray-400">Per Min</span>
+                            <input type="number" name="rate_limit_per_minute" value="5" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-1.5 text-center text-gray-200">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Note Option -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-semibold text-gray-300">Attach Custom Note</label>
+                        <input type="checkbox" name="note_enabled" onchange="document.getElementById('key_note_input').classList.toggle('hidden')" class="rounded bg-gray-800 border-gray-700 text-brand-500">
+                    </div>
+                    <input type="text" id="key_note_input" name="key_note" placeholder="Optional note for key owner..." 
+                        class="hidden w-full bg-gray-900 border border-gray-800 rounded-xl px-3.5 py-2 text-xs text-gray-200">
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-2">
+                    <button type="submit" class="w-full py-3 bg-gradient-to-r from-brand-600 to-brand-cyan hover:from-brand-700 hover:to-cyan-600 text-white font-semibold rounded-xl text-xs transition shadow-lg shadow-brand-600/20">
+                        Generate Key Now
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
 
-<script>
-    // Toggle Master API
-    function toggleMasterApi() {
-        const toggle = document.getElementById('masterToggle');
-        const status = document.getElementById('masterStatus');
-        toggle.classList.toggle('active');
-        const isActive = toggle.classList.contains('active');
-        status.textContent = isActive ? '🟢 ONLINE' : '🔴 OFFLINE';
-        status.className = 'toggle-status ' + (isActive ? 'on' : 'off');
-    }
+    <!-- EDIT KEY MODAL -->
+    <div id="editModal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-card w-full max-w-lg rounded-2xl border border-gray-800 overflow-hidden shadow-2xl my-8">
+            <div class="p-5 border-b border-gray-800 flex items-center justify-between bg-gray-900/60">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-brand-cyan"></i> Edit API Key Settings
+                </h3>
+                <button onclick="closeModal('editModal')" class="text-gray-400 hover:text-white text-lg">&times;</button>
+            </div>
+            
+            <form id="editKeyForm" onsubmit="submitEditKey(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit_key_id" name="key_id">
 
-    async function saveMasterSettings() {
-        const toggle = document.getElementById('masterToggle');
-        const message = document.getElementById('maintenanceMessage').value;
-        const masterApi = toggle.classList.contains('active') ? 1 : 0;
-        const statusDiv = document.getElementById('masterSaveStatus');
-        
-        statusDiv.textContent = '⏳ Saving...';
-        statusDiv.style.color = 'var(--text-2)';
-        
-        try {
-            const response = await fetch('/admin/update-settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ master_api: masterApi, maintenance_message: message })
+                <!-- Key Label -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1">Key Label</label>
+                    <input type="text" id="edit_name" name="name" required 
+                        class="w-full bg-gray-900 border border-gray-800 rounded-xl px-3.5 py-2.5 text-xs text-gray-200 focus:outline-none focus:border-brand-500 transition">
+                </div>
+
+                <!-- Single API Selection -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1">Allowed API Endpoint</label>
+                    <select id="edit_selected_api" name="selected_api" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-3.5 py-2.5 text-xs text-gray-200 focus:outline-none focus:border-brand-500 transition">
+                        <option value="all">⚡ All Endpoints (Full Access)</option>
+                        <% apis.forEach(function(api) { %>
+                            <option value="<%= api.name %>"><%= api.display_name %></option>
+                        <% }); %>
+                    </select>
+                </div>
+
+                <!-- Toggle Key Active / Disable Status -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 mb-1">API Execution Status</label>
+                        <select id="edit_api_enabled" name="api_enabled" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-3.5 py-2.5 text-xs text-gray-200">
+                            <option value="1">Enabled</option>
+                            <option value="0">Disabled by Admin</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-300 mb-1">Unlimited Hits</label>
+                        <select id="edit_unlimited_hits" name="unlimited_hits" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-3.5 py-2.5 text-xs text-gray-200">
+                            <option value="false">No (Rate Limited)</option>
+                            <option value="true">Yes (Unlimited)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Rate Limits -->
+                <div class="p-3 bg-gray-900/60 border border-gray-800 rounded-xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-semibold text-gray-300">Rate Limit Status</label>
+                        <input type="checkbox" id="edit_rate_limit_enabled" name="rate_limit_enabled" class="rounded bg-gray-800 border-gray-700 text-brand-500">
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                            <span class="text-[10px] text-gray-400">Daily</span>
+                            <input type="number" id="edit_rate_limit_per_day" name="rate_limit_per_day" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-1.5 text-center text-gray-200">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-gray-400">Hourly</span>
+                            <input type="number" id="edit_rate_limit_per_hour" name="rate_limit_per_hour" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-1.5 text-center text-gray-200">
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-gray-400">Per Min</span>
+                            <input type="number" id="edit_rate_limit_per_minute" name="rate_limit_per_minute" class="w-full bg-gray-950 border border-gray-800 rounded-lg p-1.5 text-center text-gray-200">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Note -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-semibold text-gray-300">Note Attached</label>
+                        <input type="checkbox" id="edit_note_enabled" name="note_enabled" class="rounded bg-gray-800 border-gray-700 text-brand-500">
+                    </div>
+                    <input type="text" id="edit_key_note" name="key_note" placeholder="Key note..." 
+                        class="w-full bg-gray-900 border border-gray-800 rounded-xl px-3.5 py-2 text-xs text-gray-200">
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-2">
+                    <button type="submit" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl text-xs transition">
+                        Update Key Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function toggleCustomKeyInput(checked) {
+            const input = document.getElementById('custom_key_input');
+            input.disabled = !checked;
+            if(checked) input.focus();
+        }
+
+        function toggleCustomExpiry(val) {
+            const container = document.getElementById('customExpiryContainer');
+            if (val === 'custom') container.classList.remove('hidden');
+            else container.classList.add('hidden');
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('API Key copied to clipboard!');
             });
-            const data = await response.json();
-            if (data.success) {
-                statusDiv.textContent = '✅ Settings saved successfully!';
-                statusDiv.style.color = 'var(--emerald)';
-            } else {
-                statusDiv.textContent = '❌ Failed to save';
-                statusDiv.style.color = 'var(--rose)';
+        }
+
+        function filterKeys() {
+            const input = document.getElementById("searchInput").value.toUpperCase();
+            const tr = document.getElementById("keysTable").getElementsByTagName("tr");
+            for (let i = 1; i < tr.length; i++) {
+                let tdName = tr[i].getElementsByTagName("td")[0];
+                let tdKey = tr[i].getElementsByTagName("td")[1];
+                if (tdName || tdKey) {
+                    let txtValueName = tdName.textContent || tdName.innerText;
+                    let txtValueKey = tdKey.textContent || tdKey.innerText;
+                    if (txtValueName.toUpperCase().indexOf(input) > -1 || txtValueKey.toUpperCase().indexOf(input) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
             }
-        } catch(e) {
-            statusDiv.textContent = '❌ Error: ' + e.message;
-            statusDiv.style.color = 'var(--rose)';
         }
-    }
 
-    // Generate Key Helpers
-    function toggleCustomKey() {
-        const cb = document.getElementById('enableCustomKey');
-        document.getElementById('customKey').style.display = cb.checked ? 'block' : 'none';
-    }
-
-    function toggleKeyNote() {
-        const cb = document.getElementById('enableNote');
-        document.getElementById('keyNote').style.display = cb.checked ? 'block' : 'none';
-    }
-
-    function toggleCustomExpiry() {
-        const select = document.getElementById('expirySelect');
-        const div = document.getElementById('customExpiryDiv');
-        div.style.display = select.value === 'custom' ? 'block' : 'none';
-    }
-
-    function toggleLimitInput() {
-        const isLimited = document.getElementById('limitedRadio').checked;
-        document.getElementById('maxTotalHitsDiv').style.display = isLimited ? 'block' : 'none';
-    }
-
-    function selectAll() {
-        document.querySelectorAll('.api-checkbox').forEach(cb => cb.checked = true);
-    }
-
-    function deselectAll() {
-        document.querySelectorAll('.api-checkbox').forEach(cb => cb.checked = false);
-    }
-
-    // Edit Modal
-    function openEditModal(id, name, expiresAt, status, unlimited, noteEnabled, keyNote) {
-        document.getElementById('editKeyId').value = id;
-        document.getElementById('editName').value = name;
-        document.getElementById('editStatus').value = status;
-        document.getElementById('editUnlimited').checked = unlimited == 1 || unlimited === true;
-        document.getElementById('editNoteEnabled').checked = noteEnabled == 1 || noteEnabled === true;
-        document.getElementById('editKeyNote').value = keyNote || '';
-        
-        if (noteEnabled == 1 || noteEnabled === true) {
-            document.getElementById('editKeyNote').style.display = 'block';
-        } else {
-            document.getElementById('editKeyNote').style.display = 'none';
-        }
-        
-        if (expiresAt && expiresAt.trim() !== '') {
+        function openEditModal(keyObjStr) {
+            const key = JSON.parse(keyObjStr);
+            document.getElementById('edit_key_id').value = key.id;
+            document.getElementById('edit_name').value = key.name || '';
+            document.getElementById('edit_api_enabled').value = key.api_enabled !== undefined ? key.api_enabled : 1;
+            document.getElementById('edit_unlimited_hits').value = key.unlimited_hits ? 'true' : 'false';
+            
+            // Set Single API Selection
             try {
-                const date = new Date(expiresAt);
-                if (!isNaN(date)) {
-                    document.getElementById('editDate').value = date.toISOString().split('T')[0];
-                    document.getElementById('editTime').value = date.toTimeString().slice(0,5);
+                let allowed = JSON.parse(key.allowed_apis);
+                if(Array.isArray(allowed) && allowed.length > 0) {
+                    document.getElementById('edit_selected_api').value = allowed[0];
+                } else {
+                    document.getElementById('edit_selected_api').value = 'all';
                 }
             } catch(e) {
-                console.log('Date parse error:', e);
+                document.getElementById('edit_selected_api').value = 'all';
+            }
+
+            document.getElementById('edit_rate_limit_enabled').checked = key.rate_limit_enabled === 1;
+            document.getElementById('edit_rate_limit_per_day').value = key.rate_limit_per_day || 100;
+            document.getElementById('edit_rate_limit_per_hour').value = key.rate_limit_per_hour || 20;
+            document.getElementById('edit_rate_limit_per_minute').value = key.rate_limit_per_minute || 5;
+
+            document.getElementById('edit_note_enabled').checked = key.note_enabled === 1;
+            document.getElementById('edit_key_note').value = key.key_note || '';
+
+            openModal('editModal');
+        }
+
+        async function submitEditKey(e) {
+            e.preventDefault();
+            const form = document.getElementById('editKeyForm');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const res = await fetch('/admin/edit-key', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + (result.error || 'Failed to update key'));
+                }
+            } catch(err) {
+                alert('Request failed');
             }
         }
-        
-        document.getElementById('editModal').classList.add('active');
-    }
-
-    function closeEditModal() {
-        document.getElementById('editModal').classList.remove('active');
-    }
-
-    function toggleEditNote() {
-        const cb = document.getElementById('editNoteEnabled');
-        document.getElementById('editKeyNote').style.display = cb.checked ? 'block' : 'none';
-    }
-
-    // Countdown Timers
-    function updateTimers() {
-        document.querySelectorAll('[data-expires]').forEach(el => {
-            const expiresAt = el.dataset.expires;
-            if (!expiresAt) return;
-            
-            const expiry = new Date(expiresAt);
-            const now = new Date();
-            const diff = expiry - now;
-            
-            if (diff <= 0) {
-                el.textContent = '🔴 EXPIRED';
-                el.style.color = 'var(--rose)';
-                return;
-            }
-            
-            const days = Math.floor(diff / (1000*60*60*24));
-            const hours = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
-            const mins = Math.floor((diff % (1000*60*60)) / (1000*60));
-            
-            let text = '';
-            if (days > 0) text += `${days}d `;
-            if (hours > 0) text += `${hours}h `;
-            text += `${mins}m`;
-            
-            el.textContent = `⏳ ${text}`;
-            el.style.color = 'var(--text-2)';
-        });
-    }
-
-    setInterval(updateTimers, 1000);
-    updateTimers();
-
-    // Close modal on Escape
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeEditModal();
-    });
-</script>
+    </script>
 </body>
 </html>
