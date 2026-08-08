@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OSINT API HUB | Admin Panel</title>
+    <title>OSINT API HUB | Admin Control Panel</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -14,7 +14,11 @@
                     colors: {
                         darkBg: '#0b0f19',
                         cardBg: '#111827',
-                        borderBg: '#1f2937'
+                        borderBg: '#1f2937',
+                        accentBlue: '#3b82f6',
+                        accentPurple: '#8b5cf6',
+                        accentCyan: '#06b6d4',
+                        accentPink: '#ec4899',
                     }
                 }
             }
@@ -27,6 +31,9 @@
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0b0f19; color: #f3f4f6; }
         .glass-card { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .glow-blue { box-shadow: 0 0 20px rgba(59, 130, 246, 0.15); }
+        .glow-purple { box-shadow: 0 0 20px rgba(139, 92, 246, 0.15); }
+        /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0b0f19; }
         ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 4px; }
@@ -40,7 +47,7 @@
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/20">
-                    <i class="fa-solid fa-terminal text-sm"></i>
+                    <i class="fa-solid me-0 fa-terminal text-sm"></i>
                 </div>
                 <div>
                     <h1 class="font-bold text-lg tracking-wide text-white">OSINT <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">HUB</span></h1>
@@ -52,6 +59,7 @@
                 <div class="hidden sm:flex items-center space-x-2 bg-gray-900/80 px-3 py-1.5 rounded-lg border border-gray-800 text-xs">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
                     <span class="text-gray-300">Logged in as: <strong class="text-blue-400"><%= user ? user.username : 'Admin' %></strong></span>
+                    <span class="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 uppercase font-semibold text-[10px]"><%= user ? user.role : 'admin' %></span>
                 </div>
 
                 <a href="/endpoints" target="_blank" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-2 rounded-lg transition border border-gray-700 flex items-center space-x-1">
@@ -69,9 +77,9 @@
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6">
 
-        <!-- Stat Cards -->
+        <!-- Banner & Quick Info -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
-            <div class="glass-card rounded-2xl p-5 border border-gray-800 flex items-center justify-between">
+            <div class="glass-card rounded-2xl p-5 border border-gray-800 glow-blue flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Total Requests</p>
                     <h3 class="text-2xl font-bold text-white mt-1"><%= totalHits.toLocaleString() %></h3>
@@ -81,7 +89,7 @@
                 </div>
             </div>
 
-            <div class="glass-card rounded-2xl p-5 border border-gray-800 flex items-center justify-between">
+            <div class="glass-card rounded-2xl p-5 border border-gray-800 glow-purple flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Active Keys</p>
                     <h3 class="text-2xl font-bold text-emerald-400 mt-1"><%= active %> <span class="text-xs text-gray-500 font-normal">/ <%= keys.length %></span></h3>
@@ -115,7 +123,7 @@
             </div>
         </div>
 
-        <!-- Global Maintenance Banner -->
+        <!-- System Maintenance Banner -->
         <div class="glass-card rounded-2xl p-5 border border-amber-500/20 bg-amber-500/5 mb-8 flex flex-col md:flex-row items-md-center justify-between gap-4">
             <div class="flex items-start space-x-3">
                 <div class="w-9 h-9 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -131,174 +139,237 @@
             </button>
         </div>
 
-        <!-- API KEYS MANAGEMENT SECTION -->
-        <div class="glass-card rounded-2xl border border-gray-800 p-6 mb-8">
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-                <div>
-                    <h2 class="text-lg font-bold text-white flex items-center space-x-2">
-                        <span>API Keys Management</span>
-                        <span class="bg-gray-800 text-gray-300 text-xs px-2.5 py-0.5 rounded-full border border-gray-700"><%= keys.length %></span>
-                    </h2>
-                    <p class="text-xs text-gray-400 mt-0.5">Manage permissions, expiration, rate limits, and key statuses</p>
+        <!-- TAB NAVIGATION -->
+        <div class="flex space-x-3 border-b border-gray-800 mb-6">
+            <button onclick="switchTab('keysTab')" id="btn-keysTab" class="tab-btn px-4 py-3 text-sm font-semibold text-blue-400 border-b-2 border-blue-500 transition flex items-center space-x-2">
+                <i class="fa-solid fa-key text-xs"></i>
+                <span>API Keys Management</span>
+            </button>
+            <button onclick="switchTab('apisTab')" id="btn-apisTab" class="tab-btn px-4 py-3 text-sm font-semibold text-gray-400 hover:text-gray-200 transition flex items-center space-x-2">
+                <i class="fa-solid fa-gears text-xs"></i>
+                <span>API Endpoint Control</span>
+            </button>
+        </div>
+
+        <!-- ================= TAB 1: API KEYS MANAGEMENT ================= -->
+        <div id="keysTab" class="tab-content">
+            <div class="glass-card rounded-2xl border border-gray-800 p-6 mb-8">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                            <span>Generated Keys</span>
+                            <span class="bg-gray-800 text-gray-300 text-xs px-2.5 py-0.5 rounded-full border border-gray-700"><%= keys.length %></span>
+                        </h2>
+                        <p class="text-xs text-gray-400 mt-0.5">Manage permissions, expiration, rate limits, and status</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button onclick="openModal('createKeyModal')" class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition flex items-center space-x-2">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Generate New Key</span>
+                        </button>
+                    </div>
                 </div>
 
-                <button onclick="openModal('createKeyModal')" class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition flex items-center space-x-2">
-                    <i class="fa-solid fa-plus"></i>
-                    <span>Generate New Key</span>
-                </button>
-            </div>
+                <!-- BULK ACTIONS TOOLBAR -->
+                <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-3 mb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div class="flex items-center space-x-3">
+                        <label class="flex items-center space-x-2 cursor-pointer text-gray-300 font-medium">
+                            <input type="checkbox" id="selectAllKeys" onclick="toggleSelectAll(this)" class="rounded border-gray-700 bg-gray-800 text-blue-500 focus:ring-blue-500/20 w-4 h-4">
+                            <span>Select All</span>
+                        </label>
+                        <span id="selectedCount" class="text-gray-500 font-mono">(0 selected)</span>
+                    </div>
 
-            <!-- BULK ACTIONS TOOLBAR -->
-            <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-3 mb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div class="flex items-center space-x-3">
-                    <label class="flex items-center space-x-2 cursor-pointer text-gray-300 font-medium">
-                        <input type="checkbox" id="selectAllKeys" onclick="toggleSelectAll(this)" class="rounded border-gray-700 bg-gray-800 text-blue-500 focus:ring-blue-500/20 w-4 h-4">
-                        <span>Select All</span>
-                    </label>
-                    <span id="selectedCount" class="text-gray-500 font-mono">(0 selected)</span>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-gray-400 hidden sm:inline">Bulk Actions:</span>
+                        <button onclick="bulkAction('enable')" class="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition font-medium">
+                            <i class="fa-solid fa-toggle-on mr-1"></i> Enable
+                        </button>
+                        <button onclick="bulkAction('disable')" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-lg transition font-medium">
+                            <i class="fa-solid fa-toggle-off mr-1"></i> Disable
+                        </button>
+                        <button onclick="bulkAction('revoke')" class="bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 px-3 py-1.5 rounded-lg transition font-medium">
+                            <i class="fa-solid fa-ban mr-1"></i> Revoke
+                        </button>
+                        <button onclick="bulkAction('delete')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-lg transition font-medium">
+                            <i class="fa-solid fa-trash mr-1"></i> Delete
+                        </button>
+                    </div>
                 </div>
 
-                <div class="flex items-center space-x-2">
-                    <span class="text-gray-400 hidden sm:inline">Bulk Actions:</span>
-                    <button onclick="bulkAction('enable')" class="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition font-medium">
-                        <i class="fa-solid fa-toggle-on mr-1"></i> Enable
-                    </button>
-                    <button onclick="bulkAction('disable')" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-lg transition font-medium">
-                        <i class="fa-solid fa-toggle-off mr-1"></i> Disable
-                    </button>
-                    <button onclick="bulkAction('revoke')" class="bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 px-3 py-1.5 rounded-lg transition font-medium">
-                        <i class="fa-solid fa-ban mr-1"></i> Revoke
-                    </button>
-                    <button onclick="bulkAction('delete')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-lg transition font-medium">
-                        <i class="fa-solid fa-trash mr-1"></i> Delete
-                    </button>
-                </div>
-            </div>
-
-            <!-- KEYS TABLE -->
-            <div class="overflow-x-auto rounded-xl border border-gray-800">
-                <table class="w-full text-left text-xs">
-                    <thead class="bg-gray-900/80 text-gray-400 uppercase tracking-wider font-semibold border-b border-gray-800">
-                        <tr>
-                            <th class="p-4 w-10">#</th>
-                            <th class="p-4">Key Info</th>
-                            <th class="p-4">Allowed API</th>
-                            <th class="p-4">Key Status</th>
-                            <th class="p-4">Rate Limits</th>
-                            <th class="p-4">Hits</th>
-                            <th class="p-4">Expires</th>
-                            <th class="p-4 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-800 text-gray-300">
-                        <% if (keys.length === 0) { %>
+                <!-- KEYS TABLE -->
+                <div class="overflow-x-auto rounded-xl border border-gray-800">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-gray-900/80 text-gray-400 uppercase tracking-wider font-semibold border-b border-gray-800">
                             <tr>
-                                <td colspan="8" class="text-center py-8 text-gray-500">No API keys generated yet. Click "Generate New Key" to start.</td>
+                                <th class="p-4 w-10">#</th>
+                                <th class="p-4">Key Info</th>
+                                <th class="p-4">Allowed APIs</th>
+                                <th class="p-4">Key Status</th>
+                                <th class="p-4">Rate Limits</th>
+                                <th class="p-4">Hits</th>
+                                <th class="p-4">Expires</th>
+                                <th class="p-4 text-right">Actions</th>
                             </tr>
-                        <% } %>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800 text-gray-300">
+                            <% if (keys.length === 0) { %>
+                                <tr>
+                                    <td colspan="8" class="text-center py-8 text-gray-500">No API keys generated yet. Click "Generate New Key" to start.</td>
+                                </tr>
+                            <% } %>
 
-                        <% keys.forEach(function(k) { %>
-                            <tr class="hover:bg-gray-800/30 transition">
-                                <td class="p-4">
-                                    <input type="checkbox" value="<%= k.id %>" class="key-checkbox rounded border-gray-700 bg-gray-800 text-blue-500 focus:ring-blue-500/20 w-4 h-4" onchange="updateSelectedCount()">
-                                </td>
-                                <td class="p-4 font-mono">
-                                    <div class="font-bold text-white flex items-center space-x-2">
-                                        <span><%= k.name || 'Unnamed Key' %></span>
-                                        <% if (k.is_custom) { %>
-                                            <span class="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] px-1.5 py-0.2 rounded">Custom</span>
-                                        <% } %>
-                                    </div>
-                                    <div class="flex items-center space-x-2 mt-1">
-                                        <span class="text-blue-400 select-all"><%= k.key %></span>
-                                        <button onclick="copyToClipboard('<%= k.key %>')" class="text-gray-500 hover:text-white transition" title="Copy Key">
-                                            <i class="fa-regular fa-copy"></i>
-                                        </button>
-                                    </div>
-                                    <% if (k.key_note) { %>
-                                        <p class="text-[11px] text-amber-400/80 italic mt-1"><i class="fa-regular fa-note-sticky text-amber-400 mr-1"></i><%= k.key_note %></p>
-                                    <% } %>
-                                </td>
-
-                                <!-- ALLOWED API DISPLAY -->
-                                <td class="p-4">
-                                    <% 
-                                        let allowed = [];
-                                        try { allowed = JSON.parse(k.allowed_apis || '["all"]'); } catch(e) { allowed = ['all']; }
-                                    %>
-                                    <% if (allowed.includes('all')) { %>
-                                        <span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2.5 py-1 rounded font-semibold text-[11px]">All APIs</span>
-                                    <% } else { %>
-                                        <span class="bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 px-2.5 py-1 rounded font-semibold text-[11px]"><%= allowed[0] %></span>
-                                    <% } %>
-                                </td>
-
-                                <!-- KEY TOGGLE & STATUS -->
-                                <td class="p-4">
-                                    <div class="flex items-center space-x-2">
-                                        <button onclick="toggleKeyEnabled('<%= k.id %>', '<%= k.api_enabled %>')" class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out <%= k.api_enabled ? 'bg-emerald-500' : 'bg-gray-700' %>">
-                                            <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out <%= k.api_enabled ? 'translate-x-4' : 'translate-x-0' %>"></span>
-                                        </button>
-
-                                        <% if (k.status === 'active') { %>
-                                            <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[10px] uppercase font-bold">Active</span>
-                                        <% } else { %>
-                                            <span class="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full text-[10px] uppercase font-bold"><%= k.status %></span>
-                                        <% } %>
-                                    </div>
-                                </td>
-
-                                <!-- RATE LIMITS -->
-                                <td class="p-4 font-mono text-[11px]">
-                                    <% if (k.unlimited_hits) { %>
-                                        <span class="text-purple-400 font-bold"><i class="fa-solid fa-infinity"></i> Unlimited</span>
-                                    <% } else if (k.rate_limit_enabled) { %>
-                                        <div class="text-gray-300">
-                                            <div>D: <strong class="text-white"><%= k.rate_limit_per_day %></strong></div>
-                                            <div>H: <strong class="text-white"><%= k.rate_limit_per_hour %></strong> | M: <strong class="text-white"><%= k.rate_limit_per_minute %></strong></div>
+                            <% keys.forEach(function(k) { %>
+                                <tr class="hover:bg-gray-800/30 transition">
+                                    <td class="p-4">
+                                        <input type="checkbox" value="<%= k.id %>" class="key-checkbox rounded border-gray-700 bg-gray-800 text-blue-500 focus:ring-blue-500/20 w-4 h-4" onchange="updateSelectedCount()">
+                                    </td>
+                                    <td class="p-4 font-mono">
+                                        <div class="font-bold text-white flex items-center space-x-2">
+                                            <span><%= k.name || 'Unnamed Key' %></span>
+                                            <% if (k.is_custom) { %>
+                                                <span class="bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] px-1.5 py-0.2 rounded">Custom</span>
+                                            <% } %>
                                         </div>
-                                    <% } else { %>
-                                        <span class="text-gray-500">Disabled</span>
-                                    <% } %>
-                                </td>
-
-                                <!-- HITS -->
-                                <td class="p-4 font-bold font-mono text-blue-400"><%= (k.hits || 0).toLocaleString() %></td>
-
-                                <!-- EXPIRES -->
-                                <td class="p-4 text-gray-400 text-[11px]">
-                                    <% if (!k.expires_at) { %>
-                                        <span class="text-emerald-400 font-semibold">Never</span>
-                                    <% } else { %>
-                                        <span><%= new Date(k.expires_at).toLocaleDateString() %></span>
-                                        <div class="text-[10px] text-gray-500"><%= new Date(k.expires_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %></div>
-                                    <% } %>
-                                </td>
-
-                                <!-- ACTIONS -->
-                                <td class="p-4 text-right">
-                                    <div class="flex items-center justify-end space-x-2">
-                                        <button onclick="openEditModal('<%= JSON.stringify(k) %>')" class="p-2 bg-gray-800 hover:bg-gray-700 text-blue-400 rounded-lg transition" title="Edit Key">
-                                            <i class="fa-solid fa-pen"></i>
-                                        </button>
-                                        <form action="/admin/delete-key" method="POST" onsubmit="return confirm('Delete this key permanently?')" class="inline">
-                                            <input type="hidden" name="id" value="<%= k.id %>">
-                                            <button type="submit" class="p-2 bg-gray-800 hover:bg-red-500/20 text-red-400 rounded-lg transition" title="Delete Key">
-                                                <i class="fa-solid fa-trash"></i>
+                                        <div class="flex items-center space-x-2 mt-1">
+                                            <span class="text-blue-400 select-all"><%= k.key %></span>
+                                            <button onclick="copyToClipboard('<%= k.key %>')" class="text-gray-500 hover:text-white transition" title="Copy Key">
+                                                <i class="fa-regular fa-copy"></i>
                                             </button>
-                                        </form>
+                                        </div>
+                                        <% if (k.note_enabled && k.key_note) { %>
+                                            <p class="text-[11px] text-gray-400 italic mt-1"><i class="fa-regular fa-note-sticky text-amber-400 mr-1"></i><%= k.key_note %></p>
+                                        <% } %>
+                                    </td>
+
+                                    <!-- ALLOWED APIS DISPLAY -->
+                                    <td class="p-4">
+                                        <% 
+                                            let allowed = [];
+                                            try { allowed = JSON.parse(k.allowed_apis || '["all"]'); } catch(e) { allowed = ['all']; }
+                                        %>
+                                        <% if (allowed.includes('all')) { %>
+                                            <span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-md font-semibold text-[11px]">All APIs</span>
+                                        <% } else { %>
+                                            <div class="flex flex-wrap gap-1 max-w-xs">
+                                                <% allowed.forEach(function(apiName) { %>
+                                                    <span class="bg-gray-800 text-cyan-300 border border-gray-700 px-2 py-0.5 rounded text-[10px]"><%= apiName %></span>
+                                                <% }); %>
+                                            </div>
+                                        <% } %>
+                                    </td>
+
+                                    <!-- KEY TOGGLE & STATUS -->
+                                    <td class="p-4">
+                                        <div class="flex items-center space-x-2">
+                                            <button onclick="toggleKeyEnabled('<%= k.id %>', '<%= k.api_enabled %>')" class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out <%= k.api_enabled ? 'bg-emerald-500' : 'bg-gray-700' %>">
+                                                <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out <%= k.api_enabled ? 'translate-x-4' : 'translate-x-0' %>"></span>
+                                            </button>
+
+                                            <% if (k.status === 'active') { %>
+                                                <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[10px] uppercase font-bold">Active</span>
+                                            <% } else { %>
+                                                <span class="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full text-[10px] uppercase font-bold"><%= k.status %></span>
+                                            <% } %>
+                                        </div>
+                                    </td>
+
+                                    <!-- RATE LIMITS -->
+                                    <td class="p-4 font-mono text-[11px]">
+                                        <% if (k.unlimited_hits) { %>
+                                            <span class="text-purple-400 font-bold"><i class="fa-solid fa-infinity"></i> Unlimited</span>
+                                        <% } else if (k.rate_limit_enabled) { %>
+                                            <div class="text-gray-300">
+                                                <div>D: <strong class="text-white"><%= k.rate_limit_per_day %></strong></div>
+                                                <div>H: <strong class="text-white"><%= k.rate_limit_per_hour %></strong> | M: <strong class="text-white"><%= k.rate_limit_per_minute %></strong></div>
+                                            </div>
+                                        <% } else { %>
+                                            <span class="text-gray-500">Disabled</span>
+                                        <% } %>
+                                    </td>
+
+                                    <!-- HITS -->
+                                    <td class="p-4 font-bold font-mono text-blue-400"><%= (k.hits || 0).toLocaleString() %></td>
+
+                                    <!-- EXPIRES -->
+                                    <td class="p-4 text-gray-400 text-[11px]">
+                                        <% if (!k.expires_at) { %>
+                                            <span class="text-emerald-400 font-semibold">Never</span>
+                                        <% } else { %>
+                                            <span><%= new Date(k.expires_at).toLocaleDateString() %></span>
+                                            <div class="text-[10px] text-gray-500"><%= new Date(k.expires_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %></div>
+                                        <% } %>
+                                    </td>
+
+                                    <!-- ACTIONS -->
+                                    <td class="p-4 text-right">
+                                        <div class="flex items-center justify-end space-x-2">
+                                            <button onclick="openEditModal('<%= JSON.stringify(k) %>')" class="p-2 bg-gray-800 hover:bg-gray-700 text-blue-400 rounded-lg transition" title="Edit Key">
+                                                <i class="fa-solid fa-pen"></i>
+                                            </button>
+                                            <form action="/admin/delete-key" method="POST" onsubmit="return confirm('Delete this key permanently?')" class="inline">
+                                                <input type="hidden" name="id" value="<%= k.id %>">
+                                                <button type="submit" class="p-2 bg-gray-800 hover:bg-red-500/20 text-red-400 rounded-lg transition" title="Delete Key">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 2: API ENDPOINTS CONTROL ================= -->
+        <div id="apisTab" class="tab-content hidden">
+            <div class="glass-card rounded-2xl border border-gray-800 p-6 mb-8">
+                <div class="mb-6">
+                    <h2 class="text-lg font-bold text-white">Global API Endpoints Control</h2>
+                    <p class="text-xs text-gray-400 mt-0.5">Toggle individual services ON/OFF globally or customize their display names</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <% apis.forEach(function(api) { %>
+                        <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 flex flex-col justify-between hover:border-gray-700 transition">
+                            <div>
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20"><%= api.endpoint %></span>
+                                    
+                                    <!-- Endpoint Global Switch -->
+                                    <button onclick="toggleApiEndpoint('<%= api.id %>', '<%= api.is_active %>')" class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out <%= api.is_active ? 'bg-emerald-500' : 'bg-gray-700' %>">
+                                        <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out <%= api.is_active ? 'translate-x-4' : 'translate-x-0' %>"></span>
+                                    </button>
+                                </div>
+
+                                <!-- Editable Display Name -->
+                                <div class="mb-3">
+                                    <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Display Name</label>
+                                    <div class="flex items-center space-x-2">
+                                        <input type="text" id="api_name_<%= api.id %>" value="<%= api.display_name %>" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                                        <button onclick="saveApiName('<%= api.id %>')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg transition">Save</button>
                                     </div>
-                                </td>
-                            </tr>
-                        <% }); %>
-                    </tbody>
-                </table>
+                                </div>
+
+                                <p class="text-xs text-gray-400"><%= api.description || 'No description provided' %></p>
+                            </div>
+
+                            <div class="mt-4 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px] text-gray-500">
+                                <span>Param: <code class="text-gray-300"><%= api.param_name %></code></span>
+                                <span>Status: <strong class="<%= api.is_active ? 'text-emerald-400' : 'text-red-400' %>"><%= api.is_active ? 'ENABLED' : 'DISABLED' %></strong></span>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
             </div>
         </div>
 
     </main>
 
-    <!-- MODAL: GENERATE NEW KEY -->
+    <!-- ================= MODAL: GENERATE NEW KEY ================= -->
     <div id="createKeyModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="glass-card border border-gray-800 w-full max-w-xl rounded-2xl p-6 relative max-h-[90vh] overflow-y-auto">
             <button onclick="closeModal('createKeyModal')" class="absolute top-4 right-4 text-gray-400 hover:text-white text-lg">
@@ -306,7 +377,7 @@
             </button>
 
             <h3 class="text-lg font-bold text-white mb-1"><i class="fa-solid fa-key text-blue-400 mr-2"></i>Generate API Key</h3>
-            <p class="text-xs text-gray-400 mb-6">Create a key for all APIs or restrict it to a single endpoint</p>
+            <p class="text-xs text-gray-400 mb-6">Create a customized key with specific permissions and rate limits</p>
 
             <form action="/admin/generate-key" method="POST" class="space-y-4 text-xs">
                 <div>
@@ -323,10 +394,10 @@
                     <input type="text" id="customKeyInput" name="custom_key" placeholder="e.g. VIP_SAHIL_2026" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500 hidden uppercase">
                 </div>
 
-                <!-- Single API Selection -->
+                <!-- Select APIs (Multi-Select Support) -->
                 <div>
-                    <label class="block text-gray-300 font-medium mb-1">Allowed API Endpoint</label>
-                    <select name="selected_api" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                    <label class="block text-gray-300 font-medium mb-1">Allowed APIs (Hold Ctrl/Cmd to select multiple)</label>
+                    <select name="selected_apis" multiple class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500 h-28">
                         <option value="all" selected>All APIs (Full Access)</option>
                         <% apis.forEach(function(api) { %>
                             <option value="<%= api.name %>"><%= api.display_name %></option>
@@ -334,7 +405,7 @@
                     </select>
                 </div>
 
-                <!-- Expiration -->
+                <!-- Expiry -->
                 <div>
                     <label class="block text-gray-300 font-medium mb-1">Expiration Period</label>
                     <select name="expiry" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-blue-500">
@@ -368,10 +439,10 @@
                     </div>
                 </div>
 
-                <!-- Key Note -->
+                <!-- Note -->
                 <div>
                     <label class="block text-gray-300 font-medium mb-1">Key Note / Remark (Optional)</label>
-                    <input type="text" name="key_note" placeholder="e.g. Customer note" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white">
+                    <input type="text" name="key_note" placeholder="e.g. Paid $20 via Telegram" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white">
                 </div>
 
                 <div class="pt-4 flex justify-end space-x-3">
@@ -382,7 +453,7 @@
         </div>
     </div>
 
-    <!-- MODAL: EDIT KEY -->
+    <!-- ================= MODAL: EDIT KEY ================= -->
     <div id="editKeyModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="glass-card border border-gray-800 w-full max-w-xl rounded-2xl p-6 relative max-h-[90vh] overflow-y-auto">
             <button onclick="closeModal('editKeyModal')" class="absolute top-4 right-4 text-gray-400 hover:text-white text-lg">
@@ -390,7 +461,7 @@
             </button>
 
             <h3 class="text-lg font-bold text-white mb-1"><i class="fa-solid fa-pen text-purple-400 mr-2"></i>Edit API Key Settings</h3>
-            <p class="text-xs text-gray-400 mb-6">Modify permissions, status, and limits</p>
+            <p class="text-xs text-gray-400 mb-6">Modify permissions, status, and limits for <span id="editKeyDisplay" class="font-mono text-blue-400"></span></p>
 
             <form id="editKeyForm" class="space-y-4 text-xs">
                 <input type="hidden" id="edit_key_id" name="key_id">
@@ -401,8 +472,8 @@
                 </div>
 
                 <div>
-                    <label class="block text-gray-300 font-medium mb-1">Allowed API Endpoint</label>
-                    <select id="edit_selected_api" name="selected_api" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white">
+                    <label class="block text-gray-300 font-medium mb-1">Allowed APIs</label>
+                    <select id="edit_selected_apis" name="selected_apis" multiple class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white h-28">
                         <option value="all">All APIs</option>
                         <% apis.forEach(function(api) { %>
                             <option value="<%= api.name %>"><%= api.display_name %></option>
@@ -467,7 +538,7 @@
         </div>
     </div>
 
-    <!-- MODAL: MAINTENANCE -->
+    <!-- ================= MODAL: MAINTENANCE ================= -->
     <div id="maintenanceModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="glass-card border border-gray-800 w-full max-w-md rounded-2xl p-6 relative">
             <button onclick="closeModal('maintenanceModal')" class="absolute top-4 right-4 text-gray-400 hover:text-white text-lg">
@@ -494,11 +565,25 @@
         function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('text-blue-400', 'border-b-2', 'border-blue-500');
+                btn.classList.add('text-gray-400');
+            });
+
+            document.getElementById(tabId).classList.remove('hidden');
+            const activeBtn = document.getElementById('btn-' + tabId);
+            activeBtn.classList.add('text-blue-400', 'border-b-2', 'border-blue-500');
+            activeBtn.classList.remove('text-gray-400');
+        }
+
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text);
             alert('Copied to clipboard: ' + text);
         }
 
+        // SELECT ALL CHECKBOXES
         function toggleSelectAll(master) {
             document.querySelectorAll('.key-checkbox').forEach(cb => cb.checked = master.checked);
             updateSelectedCount();
@@ -509,6 +594,7 @@
             document.getElementById('selectedCount').innerText = `(${count} selected)`;
         }
 
+        // BULK ACTIONS
         function bulkAction(action) {
             const selected = Array.from(document.querySelectorAll('.key-checkbox:checked')).map(cb => cb.value);
             if (selected.length === 0) return alert('Please select at least one key!');
@@ -527,6 +613,7 @@
             }
         }
 
+        // TOGGLE INDIVIDUAL KEY ENABLED
         function toggleKeyEnabled(keyId, currentStatus) {
             fetch('/admin/toggle-key-enabled', {
                 method: 'POST',
@@ -535,9 +622,35 @@
             }).then(() => location.reload());
         }
 
+        // TOGGLE GLOBAL API ENDPOINT
+        function toggleApiEndpoint(apiId, currentStatus) {
+            fetch('/admin/toggle-api', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_id: apiId, is_active: !Boolean(Number(currentStatus)) })
+            }).then(() => location.reload());
+        }
+
+        // SAVE API DISPLAY NAME
+        function saveApiName(apiId) {
+            const name = document.getElementById('api_name_' + apiId).value;
+            fetch('/admin/update-api-name', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_id: apiId, display_name: name })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) alert('Display Name Updated!');
+                else alert('Failed to update name');
+            });
+        }
+
+        // OPEN EDIT KEY MODAL
         function openEditModal(keyJson) {
             const k = JSON.parse(keyJson);
             document.getElementById('edit_key_id').value = k.id;
+            document.getElementById('editKeyDisplay').innerText = k.key;
             document.getElementById('edit_name').value = k.name || '';
             document.getElementById('edit_status').value = k.status;
             document.getElementById('edit_unlimited').checked = Boolean(k.unlimited_hits);
@@ -546,16 +659,10 @@
             document.getElementById('edit_limit_min').value = k.rate_limit_per_minute || 5;
             document.getElementById('edit_note').value = k.key_note || '';
 
-            try {
-                const allowed = JSON.parse(k.allowed_apis || '["all"]');
-                document.getElementById('edit_selected_api').value = allowed[0] || 'all';
-            } catch(e) {
-                document.getElementById('edit_selected_api').value = 'all';
-            }
-
             openModal('editKeyModal');
         }
 
+        // SUBMIT EDIT KEY FORM VIA AJAX
         document.getElementById('editKeyForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);
