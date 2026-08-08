@@ -91,7 +91,7 @@ db.serialize(() => {
         UNIQUE(api_key, date)
     )`);
 
-    // Available APIs
+    // Available APIs Table (with custom_message column)
     db.run(`CREATE TABLE IF NOT EXISTS available_apis (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
@@ -100,8 +100,14 @@ db.serialize(() => {
         required_params TEXT,
         example_params TEXT,
         description TEXT,
-        is_active INTEGER DEFAULT 1
+        is_active INTEGER DEFAULT 1,
+        custom_message TEXT DEFAULT 'API is currently turned off.'
     )`);
+
+    // Auto-migrate schema: Add custom_message column if missing in existing DB
+    db.run(`ALTER TABLE available_apis ADD COLUMN custom_message TEXT DEFAULT 'API is currently turned off.'`, (err) => {
+        // Ignore error if column already exists
+    });
 
     // Settings table
     db.run(`CREATE TABLE IF NOT EXISTS settings (
@@ -161,7 +167,7 @@ db.serialize(() => {
             ];
             
             apis.forEach(api => {
-                db.run(`INSERT INTO available_apis (name, display_name, endpoint, required_params, example_params, description) VALUES (?, ?, ?, ?, ?, ?)`, api);
+                db.run(`INSERT INTO available_apis (name, display_name, endpoint, required_params, example_params, description, is_active, custom_message) VALUES (?, ?, ?, ?, ?, ?, 1, 'API is currently turned off.')`, api);
             });
         }
     });
@@ -619,6 +625,17 @@ app.post('/admin/toggle-api', requireAuth, (req, res) => {
     });
 });
 
+// Update API Status & Custom Response Message
+app.post('/admin/update-api-status', requireAuth, (req, res) => {
+    const { api_id, is_active, custom_message } = req.body;
+    db.run('UPDATE available_apis SET is_active = ?, custom_message = ? WHERE id = ?', 
+        [is_active ? 1 : 0, custom_message || 'API is currently turned off.', api_id], 
+        function(err) {
+            res.json(err ? { error: err.message } : { success: true });
+        }
+    );
+});
+
 app.post('/admin/update-api-name', requireAuth, (req, res) => {
     const { api_id, display_name } = req.body;
     db.run('UPDATE available_apis SET display_name = ? WHERE id = ?', [display_name, api_id], function(err) {
@@ -640,7 +657,21 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
     const endpoint = req.params.endpoint;
     
     if (!userKey) return res.status(401).json({ error: 'API key required', contact: OWNER });
-    
+
+    // Check Global API Status (On/Off) and Custom Message
+    const targetApi = await new Promise((resolve) => {
+        db.get('SELECT * FROM available_apis WHERE name = ? OR endpoint = ?', [endpoint, `/api/${endpoint}`], (err, row) => {
+            resolve(row || null);
+        });
+    });
+
+    if (targetApi && targetApi.is_active === 0) {
+        return res.status(200).json({
+            status: false,
+            message: targetApi.custom_message || 'This API is currently turned off by administrator.'
+        });
+    }
+
     db.get('SELECT * FROM api_keys WHERE key = ?', [userKey], async (err, keyData) => {
         if (err || !keyData) return res.status(403).json({ error: 'Invalid API key', contact: OWNER });
         
@@ -652,7 +683,7 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
             return res.status(403).json({ error: `Key status is ${keyData.status}`, contact: OWNER });
         }
         
-        // Allowed API check
+        // Allowed API Permission check (Select All vs Single/Specific Select)
         try {
             const allowedApis = JSON.parse(keyData.allowed_apis || '["all"]');
             if (!allowedApis.includes('all') && !allowedApis.includes(endpoint)) {
