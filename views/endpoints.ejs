@@ -1,395 +1,335 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Endpoints — OSINT Hub</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>OSINT API HUB | Endpoints Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0b0f19',
+                        cardBg: '#111827',
+                        borderBg: '#1f2937',
+                        accentBlue: '#3b82f6',
+                        accentPurple: '#8b5cf6',
+                        accentCyan: '#06b6d4',
+                        accentGreen: '#10b981',
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --p1: #6c63ff;
-            --p2: #a855f7;
-            --p3: #06b6d4;
-            --dark: #080810;
-            --card: rgba(255,255,255,0.04);
-            --border: rgba(255,255,255,0.08);
-            --border-hover: rgba(108,99,255,0.5);
-            --text: #e2e8f0;
-            --muted: #64748b;
-            --success: #10b981;
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0b0f19; color: #f3f4f6; }
+        code, pre { font-family: 'Fira Code', monospace; }
+        
+        /* Glassmorphism & Neon Glows */
+        .glass-card { background: rgba(17, 24, 39, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .glass-card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .glass-card-hover:hover { transform: translateY(-4px); border-color: rgba(59, 130, 246, 0.4); box-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.2); }
+        .glow-cyan { box-shadow: 0 0 25px rgba(6, 182, 212, 0.15); }
+        .glow-blue { box-shadow: 0 0 25px rgba(59, 130, 246, 0.15); }
+
+        /* Smooth Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0f19; }
+        ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #374151; }
+
+        /* Cyberpunk Grid Background */
+        .bg-grid {
+            background-size: 30px 30px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html { scroll-behavior: smooth; }
-        body {
-            background: var(--dark);
-            color: var(--text);
-            font-family: 'Space Grotesk', sans-serif;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background:
-                radial-gradient(ellipse 80% 50% at 20% 10%, rgba(108,99,255,0.12) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 40% at 80% 80%, rgba(168,85,247,0.10) 0%, transparent 60%),
-                radial-gradient(ellipse 50% 30% at 50% 50%, rgba(6,182,212,0.05) 0%, transparent 70%);
-            pointer-events: none;
-            z-index: 0;
-        }
-        .wrap { position: relative; z-index: 1; }
-        .navbar {
-            position: fixed;
-            top: 16px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: calc(100% - 40px);
-            max-width: 1200px;
-            background: rgba(12,12,24,0.85);
-            backdrop-filter: blur(20px) saturate(180%);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 12px 24px;
-            z-index: 1000;
-            transition: all 0.3s ease;
-        }
-        .navbar:hover { border-color: rgba(108,99,255,0.2); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
-        .navbar-brand {
-            font-weight: 700;
-            font-size: 1.1rem;
-            background: linear-gradient(135deg, var(--p1), var(--p2));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-        .nav-link { color: var(--muted) !important; font-size: 0.875rem; font-weight: 500; padding: 6px 14px !important; border-radius: 8px; transition: all 0.2s ease; }
-        .nav-link:hover, .nav-link.active { color: var(--text) !important; background: rgba(255,255,255,0.06); }
-        .nav-link.active { color: var(--p1) !important; }
-        .hero { padding: 140px 0 60px; text-align: center; }
-        .hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(108,99,255,0.12);
-            border: 1px solid rgba(108,99,255,0.25);
-            padding: 6px 16px;
-            border-radius: 100px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: var(--p1);
-            margin-bottom: 24px;
-        }
-        .hero-badge .dot { width: 6px; height: 6px; background: var(--success); border-radius: 50%; animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.3); } }
-        .hero h1 { font-size: clamp(2.2rem, 5vw, 3.5rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 16px; }
-        .hero h1 .gradient-text { background: linear-gradient(135deg, var(--p1) 0%, var(--p2) 50%, var(--p3) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-        .hero p { color: var(--muted); font-size: 1.05rem; max-width: 480px; margin: 0 auto 36px; line-height: 1.7; }
-        .search-wrap { max-width: 440px; margin: 0 auto; position: relative; }
-        .search-wrap i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.9rem; pointer-events: none; }
-        .search-box { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text); padding: 13px 20px 13px 42px; border-radius: 12px; font-size: 0.9rem; font-family: 'Space Grotesk', sans-serif; transition: all 0.3s ease; }
-        .search-box:focus { outline: none; border-color: rgba(108,99,255,0.5); background: rgba(108,99,255,0.06); box-shadow: 0 0 0 3px rgba(108,99,255,0.1); }
-        .search-box::placeholder { color: var(--muted); }
-        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 48px; }
-        .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; text-align: center; transition: all 0.3s ease; }
-        .stat-card:hover { border-color: rgba(108,99,255,0.3); background: rgba(108,99,255,0.06); transform: translateY(-2px); }
-        .stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 1rem; }
-        .stat-icon.purple { background: rgba(108,99,255,0.15); color: var(--p1); }
-        .stat-icon.green { background: rgba(16,185,129,0.15); color: var(--success); }
-        .stat-icon.cyan { background: rgba(6,182,212,0.15); color: var(--p3); }
-        .stat-icon.tg { background: rgba(0,136,204,0.15); color: #0088cc; }
-        .stat-num { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; background: linear-gradient(135deg, var(--p1), var(--p2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-        .stat-label { font-size: 0.75rem; color: var(--muted); margin-top: 4px; font-weight: 500; }
-        .filter-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
-        .filter-tab { padding: 7px 16px; border-radius: 8px; background: var(--card); border: 1px solid var(--border); color: var(--muted); font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; font-family: 'Space Grotesk', sans-serif; }
-        .filter-tab:hover, .filter-tab.active { background: rgba(108,99,255,0.15); border-color: rgba(108,99,255,0.4); color: var(--p1); }
-        #apisContainer { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
-        .api-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); animation: fadeUp 0.4s ease both; }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .api-card:hover { border-color: var(--border-hover); box-shadow: 0 12px 40px rgba(108,99,255,0.12); transform: translateY(-3px); }
-        .api-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; border-bottom: 1px solid transparent; transition: all 0.2s ease; }
-        .api-card.open .api-header { border-bottom-color: var(--border); background: rgba(108,99,255,0.05); }
-        .api-title { display: flex; align-items: center; gap: 12px; }
-        .api-emoji { width: 36px; height: 36px; background: rgba(108,99,255,0.12); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
-        .api-name { font-size: 0.9rem; font-weight: 600; color: var(--text); }
-        .api-desc { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
-        .api-right { display: flex; align-items: center; gap: 8px; }
-        .get-badge { background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.25); color: var(--success); font-size: 0.68rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; padding: 3px 8px; border-radius: 5px; }
-        .chevron { color: var(--muted); font-size: 0.8rem; transition: transform 0.25s ease; }
-        .api-card.open .chevron { transform: rotate(180deg); color: var(--p1); }
-        .api-body { padding: 0 20px; max-height: 0; overflow: hidden; transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease; }
-        .api-card.open .api-body { padding: 20px; max-height: 900px; }
-        .url-bar { background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 9px; padding: 10px 14px; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--p3); word-break: break-all; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-        .url-bar .method { color: var(--success); font-weight: 600; flex-shrink: 0; }
-        .field-label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
-        .input-group-custom { display: flex; gap: 6px; margin-bottom: 14px; }
-        .param-input { flex: 1; background: rgba(0,0,0,0.25); border: 1px solid var(--border); color: var(--text); padding: 9px 13px; border-radius: 9px; font-size: 0.84rem; font-family: 'JetBrains Mono', monospace; transition: all 0.2s ease; }
-        .param-input:focus { outline: none; border-color: rgba(108,99,255,0.5); background: rgba(108,99,255,0.06); box-shadow: 0 0 0 3px rgba(108,99,255,0.08); }
-        .param-input::placeholder { color: var(--muted); font-family: 'Space Grotesk', sans-serif; }
-        .copy-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--muted); padding: 9px 12px; border-radius: 9px; cursor: pointer; font-size: 0.8rem; transition: all 0.2s ease; flex-shrink: 0; }
-        .copy-btn:hover { background: rgba(108,99,255,0.15); color: var(--p1); border-color: rgba(108,99,255,0.3); }
-        .test-btn { width: 100%; background: linear-gradient(135deg, var(--p1), var(--p2)); border: none; padding: 11px; border-radius: 10px; color: white; font-size: 0.875rem; font-weight: 600; font-family: 'Space Grotesk', sans-serif; cursor: pointer; transition: all 0.3s ease; position: relative; overflow: hidden; margin-top: 4px; }
-        .test-btn::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, var(--p2), var(--p3)); opacity: 0; transition: opacity 0.3s ease; }
-        .test-btn:hover::before { opacity: 1; }
-        .test-btn span { position: relative; z-index: 1; }
-        .test-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(108,99,255,0.35); }
-        .test-btn.loading { pointer-events: none; opacity: 0.7; }
-        .response-area { background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 14px; display: none; animation: fadeIn 0.25s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        .response-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-        .response-status { font-size: 0.72rem; font-weight: 600; padding: 3px 8px; border-radius: 5px; }
-        .response-status.ok { background: rgba(16,185,129,0.15); color: var(--success); border: 1px solid rgba(16,185,129,0.2); }
-        .response-status.err { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
-        .response-pre { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; line-height: 1.6; color: #a3e635; white-space: pre-wrap; word-break: break-all; max-height: 260px; overflow-y: auto; margin: 0; }
-        .empty-state { grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--muted); }
-        .empty-state i { font-size: 2.5rem; margin-bottom: 16px; opacity: 0.4; display: block; }
-        footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--border); padding: 32px 0; text-align: center; margin-top: 80px; }
-        footer p { color: var(--muted); font-size: 0.85rem; margin: 4px 0; }
-        footer a { color: var(--p1); text-decoration: none; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: var(--dark); }
-        ::-webkit-scrollbar-thumb { background: rgba(108,99,255,0.3); border-radius: 6px; }
-        @media (max-width: 768px) {
-            .navbar { top: 8px; width: calc(100% - 20px); }
-            .hero { padding: 110px 0 40px; }
-            .stats-row { grid-template-columns: repeat(2, 1fr); }
-            #apisContainer { grid-template-columns: 1fr; }
+
+        /* Animated Pulsing Status Dot */
+        .status-dot {
+            box-shadow: 0 0 10px #10b981;
         }
     </style>
 </head>
-<body>
-<div class="wrap">
+<body class="min-h-screen bg-grid pb-16">
 
-<nav class="navbar navbar-expand-lg">
-    <div class="container-fluid px-0">
-        <a class="navbar-brand" href="/"><i class="fas fa-shield-alt me-2"></i>OSINT HUB</a>
-        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" style="color:var(--muted)">
-            <i class="fas fa-bars"></i>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ms-auto gap-1">
-                <li class="nav-item"><a class="nav-link" href="/"><i class="fas fa-home me-1"></i>Home</a></li>
-                <li class="nav-item"><a class="nav-link active" href="/endpoints"><i class="fas fa-plug me-1"></i>Endpoints</a></li>
-                <li class="nav-item"><a class="nav-link" href="/docs"><i class="fas fa-book me-1"></i>Docs</a></li>
-                <% if (user) { %>
-                    <li class="nav-item"><a class="nav-link" href="/admin/dashboard"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt me-1"></i>Logout</a></li>
-                <% } else { %>
-                    <li class="nav-item"><a class="nav-link" href="/login"><i class="fas fa-key me-1"></i>Login</a></li>
-                <% } %>
-            </ul>
-        </div>
-    </div>
-</nav>
-
-<section class="hero">
-    <div class="container">
-        <div class="hero-badge"><span class="dot"></span>All Systems Operational</div>
-        <h1>Explore <span class="gradient-text">API Endpoints</span></h1>
-        <p>Test and integrate all available OSINT endpoints with live playground</p>
-        <div class="search-wrap">
-            <i class="fas fa-search"></i>
-            <input type="text" id="searchInput" class="search-box" placeholder="Search endpoints...">
-        </div>
-    </div>
-</section>
-
-<div class="container pb-5">
-    <div class="stats-row">
-        <div class="stat-card">
-            <div class="stat-icon purple"><i class="fas fa-code"></i></div>
-            <div class="stat-num"><%= apis.length %></div>
-            <div class="stat-label">Total Endpoints</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon green"><i class="fas fa-circle-check"></i></div>
-            <div class="stat-num">24/7</div>
-            <div class="stat-label">Uptime</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon cyan"><i class="fas fa-bolt"></i></div>
-            <div class="stat-num">&lt;1s</div>
-            <div class="stat-label">Avg Response</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon tg"><i class="fab fa-telegram"></i></div>
-            <div class="stat-num" style="font-size:0.85rem;">
-                <a href="https://t.me/<%= channel.replace('@','') %>" target="_blank" style="background:linear-gradient(135deg,var(--p1),var(--p2));-webkit-background-clip:text;background-clip:text;color:transparent;text-decoration:none;">
-                    <%= channel %>
-                </a>
-            </div>
-            <div class="stat-label">Join Channel</div>
-        </div>
-    </div>
-
-    <div class="filter-tabs">
-        <button class="filter-tab active" data-filter="all">All (<%= apis.length %>)</button>
-        <button class="filter-tab" data-filter="num">📱 Number</button>
-        <button class="filter-tab" data-filter="vehicle">🚗 Vehicle</button>
-        <button class="filter-tab" data-filter="social">👤 Social</button>
-        <button class="filter-tab" data-filter="ai">🤖 AI</button>
-        <button class="filter-tab" data-filter="other">🔍 Other</button>
-    </div>
-
-    <div id="apisContainer">
-        <% apis.forEach((api, index) => { %>
-        <div class="api-item"
-             data-name="<%= api.display_name.toLowerCase() %>"
-             data-endpoint="<%= api.endpoint.toLowerCase() %>"
-             data-category="<%=
-                (api.name.includes('num') || api.name.includes('number') || api.name.includes('aadhar') || api.name.includes('pan') || api.name.includes('family') || api.name.includes('email')) ? 'num' :
-                (api.name.includes('vehicle') || api.name.includes('veh') || api.name.includes('rc')) ? 'vehicle' :
-                (api.name.includes('insta') || api.name.includes('git') || api.name.includes('telegram') || api.name.includes('bgmi') || api.name.includes('ff')) ? 'social' :
-                (api.name.includes('mistral') || api.name.includes('ai')) ? 'ai' : 'other'
-             %>"
-             style="animation-delay:<%= index * 0.04 %>s">
-            <div class="api-card" id="card-<%= api.id %>">
-                <div class="api-header" onclick="toggleCard(<%= api.id %>)">
-                    <div class="api-title">
-                        <div class="api-emoji"><%= api.display_name.split(' ')[0] %></div>
-                        <div>
-                            <div class="api-name"><%= api.display_name.split(' ').slice(1).join(' ') %></div>
-                            <div class="api-desc"><%= api.description %></div>
-                        </div>
-                    </div>
-                    <div class="api-right">
-                        <span class="get-badge">GET</span>
-                        <i class="fas fa-chevron-down chevron"></i>
-                    </div>
+    <!-- Top Navigation -->
+    <nav class="glass-card sticky top-0 z-50 border-b border-gray-800 px-6 py-4 mb-8">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <a href="/" class="flex items-center space-x-3 group">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition">
+                    <i class="fa-solid fa-code text-sm"></i>
                 </div>
-                <div class="api-body" id="body-<%= api.id %>">
-                    <div class="url-bar">
-                        <span class="method">GET</span>
-                        <span><%= baseUrl %><%= api.endpoint %>?key=YOUR_KEY&<%= api.param_name %>=<%= api.param_example %></span>
-                    </div>
-                    <div class="field-label">API Key</div>
-                    <div class="input-group-custom">
-                        <input type="text" class="param-input" id="apiKey-<%= api.id %>" placeholder="Your API key...">
-                        <button class="copy-btn" onclick="copyInput('apiKey-<%= api.id %>', this)"><i class="fas fa-copy"></i></button>
-                    </div>
-                    <div class="field-label"><%= api.param_name.toUpperCase() %></div>
-                    <div class="input-group-custom">
-                        <input type="text" class="param-input" id="param-<%= api.id %>" placeholder="<%= api.param_example %>" value="<%= api.param_example %>">
-                        <button class="copy-btn" onclick="copyInput('param-<%= api.id %>', this)"><i class="fas fa-copy"></i></button>
-                    </div>
-                    <button class="test-btn" id="btn-<%= api.id %>" onclick="testAPI('<%= api.id %>', '<%= api.endpoint %>', '<%= api.param_name %>')">
-                        <span><i class="fas fa-play me-2"></i>Send Request</span>
-                    </button>
-                    <div class="response-area" id="response-<%= api.id %>">
-                        <div class="response-header">
-                            <span style="font-size:0.75rem;color:var(--muted);font-weight:600">RESPONSE</span>
-                            <div style="display:flex;gap:8px;align-items:center">
-                                <span class="response-status" id="status-<%= api.id %>"></span>
-                                <button class="copy-btn" onclick="copyResponse('<%= api.id %>')" style="padding:4px 8px;font-size:0.7rem"><i class="fas fa-copy"></i></button>
+                <div>
+                    <h1 class="font-extrabold text-lg tracking-wide text-white">OSINT <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">API HUB</span></h1>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Endpoints Portal</p>
+                </div>
+            </a>
+
+            <div class="flex items-center space-x-3">
+                <a href="/docs" class="text-xs bg-gray-800/80 hover:bg-gray-700 text-gray-200 px-3.5 py-2 rounded-xl transition border border-gray-700/80 flex items-center space-x-2">
+                    <i class="fa-solid fa-book text-cyan-400"></i>
+                    <span class="hidden sm:inline font-medium">Full Docs</span>
+                </a>
+
+                <% if (user) { %>
+                    <a href="/admin/dashboard" class="text-xs bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold px-4 py-2 rounded-xl transition shadow-lg shadow-blue-500/20 flex items-center space-x-2">
+                        <i class="fa-solid fa-gauge"></i>
+                        <span>Dashboard</span>
+                    </a>
+                <% } else { %>
+                    <a href="/login" class="text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 font-semibold px-4 py-2 rounded-xl border border-blue-500/30 transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>Admin Login</span>
+                    </a>
+                <% } %>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6">
+
+        <!-- HERO SECTION -->
+        <div class="text-center my-10 max-w-3xl mx-auto">
+            <span class="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-widest">
+                <i class="fa-solid fa-bolt mr-1.5"></i> High Performance Endpoints
+            </span>
+            <h2 class="text-3xl sm:text-5xl font-extrabold text-white mt-4 tracking-tight">
+                Explore Available <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500">APIs</span>
+            </h2>
+            <p class="text-gray-400 text-sm sm:text-base mt-3">
+                Test and integrate powerful OSINT endpoints directly in real-time. Use your secret key to fetch instant live JSON data.
+            </p>
+        </div>
+
+        <!-- SEARCH AND FILTER BAR -->
+        <div class="glass-card rounded-2xl p-4 border border-gray-800 mb-8 max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="relative w-full md:w-2/3">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm"></i>
+                <input type="text" id="endpointSearch" onkeyup="filterEndpoints()" placeholder="Search endpoints (e.g., leakpro, vehicle, phone)..." class="w-full bg-gray-900/90 border border-gray-800 rounded-xl pl-11 pr-4 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition">
+            </div>
+
+            <div class="flex items-center space-x-2 w-full md:w-auto justify-end">
+                <span class="text-xs text-gray-400 font-medium">Total:</span>
+                <span class="bg-cyan-500/10 text-cyan-400 font-mono text-xs font-bold px-3 py-1 rounded-lg border border-cyan-500/20" id="endpointCount"><%= apis.length %> Services</span>
+            </div>
+        </div>
+
+        <!-- ENDPOINTS GRID -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="endpointsGrid">
+            <% if (apis.length === 0) { %>
+                <div class="col-span-full text-center py-16 glass-card rounded-2xl">
+                    <i class="fa-solid fa-server text-4xl text-gray-600 mb-3"></i>
+                    <p class="text-gray-400 text-sm font-medium">No endpoints are active right now.</p>
+                </div>
+            <% } %>
+
+            <% apis.forEach(function(api) { %>
+                <div class="glass-card glass-card-hover rounded-2xl p-6 border border-gray-800/80 flex flex-col justify-between endpoint-card" data-name="<%= api.display_name.toLowerCase() %>" data-endpoint="<%= api.endpoint.toLowerCase() %>">
+                    <div>
+                        <!-- Header / Status -->
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-emerald-500/20 flex items-center space-x-1.5 uppercase tracking-wider">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 status-dot"></span>
+                                <span>GET</span>
+                            </span>
+                            <span class="text-[11px] font-mono text-gray-500">JSON</span>
+                        </div>
+
+                        <!-- API Name & Description -->
+                        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+                            <span><%= api.display_name %></span>
+                        </h3>
+                        <p class="text-xs text-gray-400 mt-2 leading-relaxed min-h-[36px]">
+                            <%= api.description || 'Provides comprehensive OSINT data analysis and record lookup.' %>
+                        </p>
+
+                        <!-- Route & Parameter -->
+                        <div class="mt-4 bg-gray-900/90 rounded-xl p-3 border border-gray-800 font-mono text-xs space-y-2">
+                            <div class="flex items-center justify-between text-cyan-400 font-semibold truncate">
+                                <span><%= api.endpoint %></span>
+                                <button onclick="copyText('<%= baseUrl %><%= api.endpoint %>')" class="text-gray-500 hover:text-white transition ml-2" title="Copy Path">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                            </div>
+                            <div class="text-[11px] text-gray-400 border-t border-gray-800/80 pt-2 flex items-center justify-between">
+                                <span>Req Param:</span>
+                                <code class="text-purple-400 font-bold bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20"><%= api.param_name %></code>
                             </div>
                         </div>
-                        <pre class="response-pre" id="response-content-<%= api.id %>"></pre>
+                    </div>
+
+                    <!-- Action Button -->
+                    <div class="mt-6 pt-4 border-t border-gray-800/60 flex items-center justify-between">
+                        <button onclick="openTesterModal('<%= api.display_name %>', '<%= api.endpoint %>', '<%= api.param_name %>', '<%= api.param_example %>')" class="w-full bg-gradient-to-r from-cyan-600/20 to-blue-600/20 hover:from-cyan-600/30 hover:to-blue-600/30 text-cyan-300 font-semibold text-xs py-2.5 px-4 rounded-xl border border-cyan-500/30 transition flex items-center justify-center space-x-2 group">
+                            <i class="fa-solid fa-terminal text-cyan-400 group-hover:rotate-12 transition transform"></i>
+                            <span>Test Live Endpoint</span>
+                        </button>
                     </div>
                 </div>
-            </div>
+            <% }); %>
         </div>
-        <% }); %>
-    </div>
-</div>
 
-<footer>
-    <div class="container">
-        <p>Built with ♥ by <strong style="color:var(--text)"><%= owner %></strong></p>
-        <p style="margin-top:8px"><a href="https://t.me/<%= channel.replace('@','') %>" target="_blank"><i class="fab fa-telegram me-1"></i><%= channel %></a></p>
-    </div>
-</footer>
+    </main>
 
-</div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-    function toggleCard(id) {
-        document.getElementById(`card-${id}`).classList.toggle('open');
-    }
-    function copyInput(elementId, btn) {
-        const el = document.getElementById(elementId);
-        if (!el.value) return;
-        navigator.clipboard.writeText(el.value).then(() => {
-            const orig = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-check" style="color:#10b981"></i>';
-            setTimeout(() => btn.innerHTML = orig, 1200);
-        });
-    }
-    function copyResponse(apiId) {
-        const text = document.getElementById(`response-content-${apiId}`).textContent;
-        navigator.clipboard.writeText(text).then(() => {
-            const btn = event.target.closest('.copy-btn');
-            const orig = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-check" style="color:#10b981"></i>';
-            setTimeout(() => btn.innerHTML = orig, 1200);
-        });
-    }
-    async function testAPI(apiId, endpoint, paramName) {
-        const apiKey = document.getElementById(`apiKey-${apiId}`).value.trim();
-        const paramValue = document.getElementById(`param-${apiId}`).value.trim();
-        const btn = document.getElementById(`btn-${apiId}`);
-        if (!apiKey) { showResponse(apiId, { error: 'API key required' }, 'err', '400'); return; }
-        if (!paramValue) { showResponse(apiId, { error: `${paramName} is required` }, 'err', '400'); return; }
-        btn.classList.add('loading');
-        btn.querySelector('span').innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
-        document.getElementById(`response-${apiId}`).style.display = 'none';
-        try {
-            const url = `${window.location.origin}${endpoint}?key=${encodeURIComponent(apiKey)}&${encodeURIComponent(paramName)}=${encodeURIComponent(paramValue)}`;
-            const start = Date.now();
-            const response = await fetch(url);
-            const elapsed = Date.now() - start;
-            const data = await response.json();
-            showResponse(apiId, data, response.ok ? 'ok' : 'err', `${response.status} · ${elapsed}ms`);
-        } catch (error) {
-            showResponse(apiId, { error: error.message }, 'err', 'Error');
-        } finally {
-            btn.classList.remove('loading');
-            btn.querySelector('span').innerHTML = '<i class="fas fa-play me-2"></i>Send Request';
+    <!-- ================= MODAL: LIVE API TESTER CONSOLE ================= -->
+    <div id="testerModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-card border border-gray-800 w-full max-w-2xl rounded-2xl p-6 relative shadow-2xl max-h-[90vh] flex flex-col justify-between">
+            
+            <!-- Close Button -->
+            <button onclick="closeModal('testerModal')" class="absolute top-4 right-4 text-gray-400 hover:text-white text-lg w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div>
+                <!-- Header -->
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="w-9 h-9 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-vial"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-white" id="modalApiTitle">Test Endpoint</h3>
+                        <p class="text-xs font-mono text-cyan-400" id="modalApiEndpoint"></p>
+                    </div>
+                </div>
+
+                <!-- Input Controls -->
+                <div class="space-y-3 my-4 text-xs">
+                    <div>
+                        <label class="block text-gray-400 font-medium mb-1">Your API Key <span class="text-red-400">*</span></label>
+                        <input type="text" id="testApiKey" placeholder="OSINT_XXXXXXX" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:border-cyan-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-400 font-medium mb-1" id="modalParamLabel">Parameter</label>
+                        <input type="text" id="testParamValue" placeholder="Enter value..." class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-white font-mono focus:outline-none focus:border-cyan-500">
+                    </div>
+
+                    <button id="runTestBtn" onclick="executeApiTest()" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-2.5 rounded-xl transition shadow-lg shadow-cyan-500/20 flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        <span>Send Request</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Response Viewer Console -->
+            <div class="mt-2">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">JSON Response Console</span>
+                    <span id="testStatus" class="text-[10px] font-mono px-2 py-0.5 rounded hidden"></span>
+                </div>
+                <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 h-48 overflow-y-auto font-mono text-xs text-green-400 relative">
+                    <pre id="jsonOutput" class="whitespace-pre-wrap break-all">// Click "Send Request" to fetch live response...</pre>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="max-w-7xl mx-auto text-center mt-16 pt-8 border-t border-gray-800/80 text-xs text-gray-500">
+        <p>OSINT API Hub &copy; 2026. Powered by Telegram Support <a href="https://t.me/<%= owner.replace('@','') %>" target="_blank" class="text-cyan-400 hover:underline"><%= owner %></a></p>
+    </footer>
+
+    <!-- JAVASCRIPT CONTROLLERS -->
+    <script>
+        let currentEndpoint = '';
+        let currentParamName = '';
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text);
+            alert('Copied link: ' + text);
         }
-    }
-    function showResponse(apiId, data, type, statusText) {
-        const div = document.getElementById(`response-${apiId}`);
-        document.getElementById(`response-content-${apiId}`).textContent = JSON.stringify(data, null, 2);
-        const s = document.getElementById(`status-${apiId}`);
-        s.textContent = statusText;
-        s.className = `response-status ${type}`;
-        div.style.display = 'block';
-    }
-    document.getElementById('searchInput').addEventListener('input', function() {
-        filterCards(this.value.toLowerCase(), document.querySelector('.filter-tab.active')?.dataset.filter || 'all');
-    });
-    document.querySelectorAll('.filter-tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            filterCards(document.getElementById('searchInput').value.toLowerCase(), this.dataset.filter);
-        });
-    });
-    function filterCards(query, category) {
-        let visible = 0;
-        document.querySelectorAll('.api-item').forEach(item => {
-            const show = (!query || item.dataset.name.includes(query) || item.dataset.endpoint.includes(query)) &&
-                         (category === 'all' || item.dataset.category === category);
-            item.style.display = show ? '' : 'none';
-            if (show) visible++;
-        });
-        const ex = document.getElementById('emptyState');
-        if (ex) ex.remove();
-        if (visible === 0) {
-            const e = document.createElement('div');
-            e.id = 'emptyState';
-            e.className = 'empty-state';
-            e.innerHTML = '<i class="fas fa-search-minus"></i><p>No endpoints found</p>';
-            document.getElementById('apisContainer').appendChild(e);
+
+        function filterEndpoints() {
+            const query = document.getElementById('endpointSearch').value.toLowerCase();
+            const cards = document.querySelectorAll('.endpoint-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const name = card.getAttribute('data-name');
+                const endpoint = card.getAttribute('data-endpoint');
+                if (name.includes(query) || endpoint.includes(query)) {
+                    card.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+
+            document.getElementById('endpointCount').innerText = `${visibleCount} Services`;
         }
-    }
-    setTimeout(() => {
-        const first = document.querySelector('.api-card');
-        if (first) toggleCard(first.id.replace('card-', ''));
-    }, 400);
-</script>
+
+        function openTesterModal(title, endpoint, paramName, paramExample) {
+            currentEndpoint = endpoint;
+            currentParamName = paramName;
+
+            document.getElementById('modalApiTitle').innerText = title;
+            document.getElementById('modalApiEndpoint').innerText = endpoint;
+            document.getElementById('modalParamLabel').innerHTML = `Query Parameter: <code class="text-purple-400 font-bold">${paramName}</code>`;
+            document.getElementById('testParamValue').value = paramExample || '';
+            document.getElementById('testParamValue').placeholder = `Enter ${paramName}...`;
+            document.getElementById('jsonOutput').innerText = '// Click "Send Request" to fetch live response...';
+            document.getElementById('jsonOutput').className = 'whitespace-pre-wrap break-all text-green-400';
+            
+            const statusEl = document.getElementById('testStatus');
+            statusEl.classList.add('hidden');
+
+            openModal('testerModal');
+        }
+
+        function executeApiTest() {
+            const apiKey = document.getElementById('testApiKey').value.trim();
+            const paramVal = document.getElementById('testParamValue').value.trim();
+            const outputEl = document.getElementById('jsonOutput');
+            const statusEl = document.getElementById('testStatus');
+
+            if (!apiKey) {
+                alert('Please enter an API Key!');
+                return;
+            }
+
+            outputEl.innerText = 'Fetching response from server...';
+            outputEl.className = 'whitespace-pre-wrap break-all text-cyan-300 animate-pulse';
+
+            const testUrl = `${currentEndpoint}?key=${encodeURIComponent(apiKey)}&${encodeURIComponent(currentParamName)}=${encodeURIComponent(paramVal)}`;
+
+            const startTime = performance.now();
+
+            fetch(testUrl)
+            .then(async response => {
+                const endTime = performance.now();
+                const duration = Math.round(endTime - startTime);
+                const data = await response.json();
+
+                statusEl.classList.remove('hidden');
+                if (response.ok) {
+                    statusEl.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                    statusEl.innerText = `STATUS: 200 OK (${duration}ms)`;
+                    outputEl.className = 'whitespace-pre-wrap break-all text-green-400';
+                } else {
+                    statusEl.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20';
+                    statusEl.innerText = `STATUS: ${response.status} ERROR (${duration}ms)`;
+                    outputEl.className = 'whitespace-pre-wrap break-all text-red-400';
+                }
+
+                outputEl.innerText = JSON.stringify(data, null, 2);
+            })
+            .catch(err => {
+                statusEl.classList.remove('hidden');
+                statusEl.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20';
+                statusEl.innerText = 'REQUEST FAILED';
+                outputEl.className = 'whitespace-pre-wrap break-all text-red-400';
+                outputEl.innerText = JSON.stringify({ error: 'Failed to connect to API endpoint', details: err.message }, null, 2);
+            });
+        }
+    </script>
 </body>
 </html>
