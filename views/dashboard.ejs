@@ -336,7 +336,7 @@
             <div class="glass-card rounded-2xl border border-gray-800 p-6 mb-8">
                 <div class="mb-6">
                     <h2 class="text-lg font-bold text-white">Global API Endpoints Control</h2>
-                    <p class="text-xs text-gray-400 mt-0.5">Toggle individual services ON/OFF globally or customize display names</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Toggle individual services ON/OFF globally or customize display names and disabled messages</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -359,7 +359,13 @@
                                     </div>
                                 </div>
 
-                                <p class="text-xs text-gray-400"><%= api.description || 'No description provided' %></p>
+                                <p class="text-xs text-gray-400 mb-3"><%= api.description || 'No description provided' %></p>
+
+                                <!-- Custom Disabled Message Setting -->
+                                <button onclick="openApiMessageModal('<%= api.id %>', '<%= api.is_active %>', `<%= (api.custom_message || '').replace(/`/g, '\\`') %>`)" class="w-full bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-[11px] py-1.5 px-3 rounded-lg transition flex items-center justify-center space-x-1">
+                                    <i class="fa-solid fa-message text-amber-400"></i>
+                                    <span>Set Off Message</span>
+                                </button>
                             </div>
 
                             <div class="mt-4 pt-3 border-t border-gray-800/80 flex items-center justify-between text-[11px] text-gray-500">
@@ -410,12 +416,18 @@
 
                 <div>
                     <label class="block text-gray-300 font-medium mb-1">Expiration Period</label>
-                    <select name="expiry" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                    <select name="expiry" onchange="toggleCustomExpiry(this.value)" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-blue-500">
                         <option value="never">Never Expires</option>
                         <option value="3d">3 Days</option>
                         <option value="7d">7 Days</option>
                         <option value="30d">30 Days</option>
+                        <option value="custom">Custom Date & Time</option>
                     </select>
+
+                    <div id="customExpiryBox" class="grid grid-cols-2 gap-2 mt-2 hidden">
+                        <input type="date" name="custom_expiry_date" class="bg-gray-900 border border-gray-700 rounded-lg p-2 text-white">
+                        <input type="time" name="custom_expiry_time" value="23:59" class="bg-gray-900 border border-gray-700 rounded-lg p-2 text-white">
+                    </div>
                 </div>
 
                 <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-800 space-y-3">
@@ -468,7 +480,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-gray-300 font-medium mb-1">Allowed APIs</label>
+                    <label class="block text-gray-300 font-medium mb-1">Allowed APIs (Hold Ctrl/Cmd to select multiple)</label>
                     <select id="edit_selected_apis" name="selected_apis" multiple class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white h-28">
                         <option value="all">All APIs</option>
                         <% apis.forEach(function(api) { %>
@@ -501,11 +513,11 @@
 
                 <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-800 space-y-3">
                     <label class="flex items-center space-x-2 cursor-pointer text-gray-300 font-medium">
-                        <input type="checkbox" id="edit_unlimited" name="unlimited_hits" value="true" class="rounded border-gray-700 bg-gray-800 text-purple-500">
+                        <input type="checkbox" id="edit_unlimited" name="unlimited_hits" value="true" onchange="toggleEditRateLimits(this.checked)" class="rounded border-gray-700 bg-gray-800 text-purple-500">
                         <span>Unlimited Requests</span>
                     </label>
 
-                    <div class="grid grid-cols-2 gap-3 pt-2">
+                    <div id="edit_rateLimitsBox" class="grid grid-cols-2 gap-3 pt-2">
                         <div>
                             <label class="block text-gray-400 text-[10px] mb-1">Day Limit</label>
                             <input type="number" id="edit_limit_day" name="rate_limit_per_day" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white">
@@ -525,6 +537,33 @@
                 <div class="pt-4 flex justify-end space-x-3">
                     <button type="button" onclick="closeModal('editKeyModal')" class="bg-gray-800 text-gray-300 px-4 py-2 rounded-xl">Cancel</button>
                     <button type="submit" class="bg-purple-600 hover:bg-purple-500 text-white font-semibold px-5 py-2 rounded-xl">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: UPDATE API CUSTOM OFF MESSAGE ================= -->
+    <div id="apiMessageModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-card border border-gray-800 w-full max-w-md rounded-2xl p-6 relative">
+            <button onclick="closeModal('apiMessageModal')" class="absolute top-4 right-4 text-gray-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <h3 class="text-lg font-bold text-white mb-4"><i class="fa-solid fa-gears text-cyan-400 mr-2"></i>API Custom Response Message</h3>
+
+            <form id="apiMessageForm" onsubmit="handleApiMessageSubmit(event)" class="space-y-4 text-xs">
+                <input type="hidden" id="api_msg_id">
+                <input type="hidden" id="api_msg_active">
+
+                <div>
+                    <label class="block text-gray-300 font-medium mb-1">Custom Off Message</label>
+                    <textarea id="api_msg_custom" rows="3" required class="w-full bg-gray-900 border border-gray-700 rounded-xl p-3 text-white focus:outline-none focus:border-cyan-500"></textarea>
+                    <p class="text-[10px] text-gray-500 mt-1">This message will be shown when users call this API while it is turned OFF.</p>
+                </div>
+
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('apiMessageModal')" class="bg-gray-800 text-gray-300 px-4 py-2 rounded-xl">Cancel</button>
+                    <button type="submit" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-5 py-2 rounded-xl">Save Message</button>
                 </div>
             </form>
         </div>
@@ -585,6 +624,18 @@
             document.getElementById('selectedCount').innerText = `(${count} selected)`;
         }
 
+        function toggleCustomExpiry(val) {
+            const customBox = document.getElementById('customExpiryBox');
+            if (val === 'custom') customBox.classList.remove('hidden');
+            else customBox.classList.add('hidden');
+        }
+
+        function toggleEditRateLimits(isUnlimited) {
+            const box = document.getElementById('edit_rateLimitsBox');
+            if (isUnlimited) box.classList.add('hidden');
+            else box.classList.remove('hidden');
+        }
+
         function bulkAction(action) {
             const selected = Array.from(document.querySelectorAll('.key-checkbox:checked')).map(cb => cb.value);
             if (selected.length === 0) return alert('Please select at least one key!');
@@ -633,28 +684,89 @@
             });
         }
 
+        function openApiMessageModal(id, isActive, customMsg) {
+            document.getElementById('api_msg_id').value = id;
+            document.getElementById('api_msg_active').value = isActive;
+            document.getElementById('api_msg_custom').value = customMsg || 'API is currently turned off.';
+            openModal('apiMessageModal');
+        }
+
+        function handleApiMessageSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('api_msg_id').value;
+            const isActive = document.getElementById('api_msg_active').value;
+            const customMsg = document.getElementById('api_msg_custom').value;
+
+            fetch('/admin/update-api-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    api_id: id,
+                    is_active: Number(isActive),
+                    custom_message: customMsg
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('API Off Message Updated!');
+                    closeModal('apiMessageModal');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            });
+        }
+
         function openEditModal(k) {
             document.getElementById('edit_key_id').value = k.id;
             document.getElementById('editKeyDisplay').innerText = k.key;
             document.getElementById('edit_name').value = k.name || '';
             document.getElementById('edit_status').value = k.status;
-            document.getElementById('edit_unlimited').checked = Boolean(k.unlimited_hits);
-            document.getElementById('edit_limit_day').value = k.rate_limit_per_day || 100;
-            document.getElementById('edit_limit_min').value = k.rate_limit_per_minute || 0;
+            
+            const isUnlimited = Boolean(k.unlimited_hits);
+            document.getElementById('edit_unlimited').checked = isUnlimited;
+            toggleEditRateLimits(isUnlimited);
+
+            document.getElementById('edit_limit_day').value = k.rate_limit_per_day !== undefined ? k.rate_limit_per_day : 100;
+            document.getElementById('edit_limit_min').value = k.rate_limit_per_minute !== undefined ? k.rate_limit_per_minute : 0;
             document.getElementById('edit_note').value = k.key_note || '';
+
+            // Pre-select allowed APIs in multi-select dropdown
+            let allowed = [];
+            try { allowed = JSON.parse(k.allowed_apis || '["all"]'); } catch(e) { allowed = ['all']; }
+            const selectEl = document.getElementById('edit_selected_apis');
+            Array.from(selectEl.options).forEach(opt => {
+                opt.selected = allowed.includes(opt.value);
+            });
 
             openModal('editKeyModal');
         }
 
         document.getElementById('editKeyForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            
             const formData = new FormData(this);
-            const data = Object.fromEntries(formData.entries());
+            let selectedApis = [];
+            const selectEl = document.getElementById('edit_selected_apis');
+            Array.from(selectEl.selectedOptions).forEach(opt => selectedApis.push(opt.value));
+
+            const payload = {
+                key_id: formData.get('key_id'),
+                name: formData.get('name'),
+                status: formData.get('status'),
+                expiry: formData.get('expiry'),
+                unlimited_hits: formData.get('unlimited_hits') === 'true',
+                rate_limit_per_day: formData.get('rate_limit_per_day'),
+                rate_limit_per_minute: formData.get('rate_limit_per_minute'),
+                key_note: formData.get('key_note'),
+                selected_apis: selectedApis
+            };
 
             fetch('/admin/edit-key', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify(payload)
             })
             .then(res => res.json())
             .then(resData => {
