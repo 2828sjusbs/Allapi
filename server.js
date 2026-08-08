@@ -16,7 +16,9 @@ const CHANNEL = '@OSINTNXERA';
 
 const MASTER_KEYS = {
     ftosint: 'sahil-new',
-    mistral: 'FVKec5Xqa2ORzSoBrqi21nRbIM6rFk2q'
+    mistral: 'FVKec5Xqa2ORzSoBrqi21nRbIM6rFk2q',
+    subhxco: 'subh-key',
+    ayaanmods: 'ayaan-key'
 };
 
 const dataDir = path.join(__dirname, 'data');
@@ -37,7 +39,7 @@ db.serialize(() => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    // API Keys table (Hourly rate limit column removed)
+    // API Keys table
     db.run(`CREATE TABLE IF NOT EXISTS api_keys (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         key TEXT UNIQUE,
@@ -60,7 +62,7 @@ db.serialize(() => {
         api_enabled INTEGER DEFAULT 1
     )`);
 
-    // Rate limit tracking with UNIQUE constraint
+    // Rate limit tracking
     db.run(`CREATE TABLE IF NOT EXISTS rate_limit_tracking (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         api_key TEXT,
@@ -133,10 +135,10 @@ db.serialize(() => {
     db.get(`SELECT COUNT(*) as count FROM available_apis`, [], (err, row) => {
         if (row && row.count === 0) {
             const apis = [
-                ['leakpro', '🔓 Leak Pro', '/api/leakpro', 'number', '{"number":"918887882236"}', 'LEAK pro information'],
+                ['leakpro', '🔓 Leak Pro', '/api/leakpro', 'number', '{"number":"919876543210"}', 'LEAK pro information'],
                 ['vehicle-info', '🚗 Vehicle Info', '/api/vehicle-info', 'vehicle', '{"vehicle":"UP42BB2572"}', 'Get vehicle challan/info'],
                 ['telegram-num', '📞 Telegram to Number', '/api/telegram-num', 'term', '{"term":"7577179320"}', 'Get number from Telegram ID'],
-                ['family-info', '👨‍👩‍👧‍👦 Family Info', '/api/family-info', 'q', '{"q":"942660008471"}', 'Family information lookup'],
+                ['family-info', '👨‍👩‍👧‍👦 Family Info', '/api/family-info', 'q', '{"q":"123456789012"}', 'Family information lookup'],
                 ['number-info', '📱 Number Info', '/api/number-info', 'q', '{"q":"9876543321"}', 'Complete number information'],
                 ['num-newinfo', '🔍 Number New Info', '/api/num-newinfo', 'q', '{"q":"1234597890"}', 'Advanced number information'],
                 ['email-info', '📧 Email Info', '/api/email-info', 'q', '{"q":"test@email.com"}', 'Email address information'],
@@ -153,7 +155,7 @@ db.serialize(() => {
                 ['ff', '🔫 FreeFire ID', '/api/ff', 'uid', '{"uid":"123456789"}', 'FreeFire player'],
                 ['ai-image', '🎨 AI Image Gen', '/api/ai-image', 'prompt', '{"prompt":"cyberpunk cat"}', 'Generate AI images'],
                 ['insta', '📸 Instagram Info', '/api/insta', 'username', '{"username":"instagram"}', 'Instagram profile'],
-                ['leak', '🔍 Leak Info', '/api/leak', 'number', '{"number":"918887882236"}', 'Complete phone info'],
+                ['leak', '🔍 Leak Info', '/api/leak', 'number', '{"number":"919876543210"}', 'Complete phone info'],
                 ['mistral', '🤖 Mistral AI', '/api/mistral', 'message', '{"message":"What is AI?"}', 'Chat with Mistral AI'],
                 ['veh-to-num', '🚗 Vehicle to Number', '/api/veh-to-num', 'term', '{"term":"UP50P5434"}', 'Vehicle to mobile number']
             ];
@@ -198,32 +200,42 @@ function requireHeadAdmin(req, res, next) {
     next();
 }
 
+// ============ HELPER FUNCTION FOR FLEXIBLE PARAMETER EXTRACTION ============
+const getParam = (p, ...keys) => {
+    for (let k of keys) {
+        if (p[k] !== undefined && p[k] !== null && p[k] !== '') {
+            return encodeURIComponent(p[k]);
+        }
+    }
+    return '';
+};
+
 // ============ API PROXY MAP ============
 const apiProxyMap = {
-    'leakpro': (p) => `https://raxxosint.onrender.com/leakosint?key=Customer&quiry=${p.number}`,
-    'vehicle-info': (p) => `https://leakapi.dpdns.org/vehicle-info?registration_number=${p.vehicle || p.q || p.term}`,
-    'telegram-num': (p) => `https://tg-to-num-ten.vercel.app/tg?key=sahil_X&num=${p.term || p.id || p.username}`,
-    'family-info': (p) => `https://osint.invalidayushh.workers.dev/adhar?key=Sahil&q=${p.q || p.term || p.id}`,
-    'number-info': (p) => `https://osint.invalidayushh.workers.dev/num?key=Sahil&q=${p.q || p.number || p.num}`,
-    'num-newinfo': (p) => `https://leakapi.dpdns.org/search?q=${p.q || p.number || p.num}`,
-    'email-info': (p) => `https://osint.invalidayushh.workers.dev/email?key=Sahil&q=${p.q || p.email}`,
-    'insta': (p) => `https://osint.invalidayushh.workers.dev/insta?key=Sahil&q=${p.username}`,
-    'vehicle': (p) => `https://leakapi.dpdns.org/api/vehicle?vehicle=${p.vehicle}`,
-    'family': (p) => `https://ayaanmods.site/family.php?key=${MASTER_KEYS.subhxco}&term=${p.term}`,
-    'num-india': (p) => `https://ft-osint-api.duckdns.org/api/number?key=${MASTER_KEYS.ftosint}&num=${p.num}`,
-    'num-pak': (p) => `https://ft-osint-api.duckdns.org/api/pk?key=${MASTER_KEYS.ftosint}&number=${p.number}`,
-    'bank': (p) => `https://ft-osint-api.duckdns.org/api/ifsc?key=${MASTER_KEYS.ftosint}&ifsc=${p.ifsc}`,
-    'pan': (p) => `https://ft-osint-api.duckdns.org/api/pan?key=${MASTER_KEYS.ftosint}&pan=${p.pan}`,
-    'rc': (p) => `https://leakapi.dpdns.org/rc?registration_number=${p.owner}`,
-    'ip': (p) => `https://ft-osint-api.duckdns.org/api/ip?key=${MASTER_KEYS.ftosint}&ip=${p.ip}`,
-    'pincode': (p) => `https://ft-osint-api.duckdns.org/api/pincode?key=${MASTER_KEYS.ftosint}&pin=${p.pin}`,
-    'git': (p) => `https://ft-osint-api.duckdns.org/api/git?key=${MASTER_KEYS.ftosint}&username=${p.username}`,
-    'bgmi': (p) => `https://ft-osint-api.duckdns.org/api/bgmi?key=${MASTER_KEYS.ftosint}&uid=${p.uid}`,
-    'ff': (p) => `https://ft-osint-api.duckdns.org/api/ff?key=${MASTER_KEYS.ftosint}&uid=${p.uid}`,
-    'ai-image': (p) => `https://ayaanmods.site/aiimage.php?key=${MASTER_KEYS.ayaanmods}&prompt=${p.prompt}`,
-    'leak': (p) => `https://leakapi.dpdns.org/chain?q=${p.number}`,
+    'leakpro': (p) => `https://raxxosint.onrender.com/leakosint?key=Customer&quiry=${getParam(p, 'number', 'query', 'q', 'num', 'quiry', 'term')}`,
+    'vehicle-info': (p) => `https://leakapi.dpdns.org/vehicle-info?registration_number=${getParam(p, 'vehicle', 'registration_number', 'q', 'term', 'query')}`,
+    'telegram-num': (p) => `https://tg-to-num-ten.vercel.app/tg?key=sahil_X&num=${getParam(p, 'term', 'id', 'username', 'num', 'query', 'q')}`,
+    'family-info': (p) => `https://osint.invalidayushh.workers.dev/adhar?key=Sahil&q=${getParam(p, 'q', 'term', 'id', 'query', 'number')}`,
+    'number-info': (p) => `https://osint.invalidayushh.workers.dev/num?key=Sahil&q=${getParam(p, 'q', 'number', 'num', 'query', 'term')}`,
+    'num-newinfo': (p) => `https://leakapi.dpdns.org/search?q=${getParam(p, 'q', 'number', 'num', 'query', 'term')}`,
+    'email-info': (p) => `https://osint.invalidayushh.workers.dev/email?key=Sahil&q=${getParam(p, 'q', 'email', 'query')}`,
+    'insta': (p) => `https://osint.invalidayushh.workers.dev/insta?key=Sahil&q=${getParam(p, 'username', 'q', 'query')}`,
+    'vehicle': (p) => `https://leakapi.dpdns.org/api/vehicle?vehicle=${getParam(p, 'vehicle', 'q', 'term', 'query')}`,
+    'family': (p) => `https://ayaanmods.site/family.php?key=${MASTER_KEYS.subhxco}&term=${getParam(p, 'term', 'q', 'query', 'number')}`,
+    'num-india': (p) => `https://ft-osint-api.duckdns.org/api/number?key=${MASTER_KEYS.ftosint}&num=${getParam(p, 'num', 'number', 'q', 'query')}`,
+    'num-pak': (p) => `https://ft-osint-api.duckdns.org/api/pk?key=${MASTER_KEYS.ftosint}&number=${getParam(p, 'number', 'num', 'q', 'query')}`,
+    'bank': (p) => `https://ft-osint-api.duckdns.org/api/ifsc?key=${MASTER_KEYS.ftosint}&ifsc=${getParam(p, 'ifsc', 'q', 'query')}`,
+    'pan': (p) => `https://ft-osint-api.duckdns.org/api/pan?key=${MASTER_KEYS.ftosint}&pan=${getParam(p, 'pan', 'q', 'query')}`,
+    'rc': (p) => `https://leakapi.dpdns.org/rc?registration_number=${getParam(p, 'owner', 'vehicle', 'q', 'query')}`,
+    'ip': (p) => `https://ft-osint-api.duckdns.org/api/ip?key=${MASTER_KEYS.ftosint}&ip=${getParam(p, 'ip', 'q', 'query')}`,
+    'pincode': (p) => `https://ft-osint-api.duckdns.org/api/pincode?key=${MASTER_KEYS.ftosint}&pin=${getParam(p, 'pin', 'q', 'query')}`,
+    'git': (p) => `https://ft-osint-api.duckdns.org/api/git?key=${MASTER_KEYS.ftosint}&username=${getParam(p, 'username', 'q', 'query')}`,
+    'bgmi': (p) => `https://ft-osint-api.duckdns.org/api/bgmi?key=${MASTER_KEYS.ftosint}&uid=${getParam(p, 'uid', 'q', 'query')}`,
+    'ff': (p) => `https://ft-osint-api.duckdns.org/api/ff?key=${MASTER_KEYS.ftosint}&uid=${getParam(p, 'uid', 'q', 'query')}`,
+    'ai-image': (p) => `https://ayaanmods.site/aiimage.php?key=${MASTER_KEYS.ayaanmods}&prompt=${getParam(p, 'prompt', 'q', 'query')}`,
+    'leak': (p) => `https://leakapi.dpdns.org/chain?q=${getParam(p, 'number', 'query', 'q', 'num', 'term')}`,
     'mistral': `mistral-direct`,
-    'veh-to-num': (p) => `https://vehicleinfo.noobgamingv40.workers.dev/fetch?vehicle=${p.vehicle || p.term}`
+    'veh-to-num': (p) => `https://vehicleinfo.noobgamingv40.workers.dev/fetch?vehicle=${getParam(p, 'vehicle', 'term', 'q', 'query')}`
 };
 
 // ============ CLEAN FUNCTION ============
@@ -372,7 +384,6 @@ app.get('/admin/dashboard', requireAuth, (req, res) => {
             db.get('SELECT COUNT(*) as active FROM api_keys WHERE status="active"', [], (err, active) => {
                 db.all('SELECT * FROM available_apis', [], (err, apis) => {
                     db.get('SELECT * FROM settings WHERE id = 1', [], (err, settings) => {
-                        // Fetch Daily Analytics for Chart (Last 7 Days)
                         db.all(`SELECT date, SUM(calls) as total_calls FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7`, [], (err, chartRows) => {
                             const chartData = (chartRows || []).reverse();
                             const formattedApis = (apis || []).map(api => {
@@ -623,7 +634,7 @@ app.post('/admin/update-settings', requireAuth, (req, res) => {
     );
 });
 
-// ============ MAIN API ENDPOINT ============
+// ============ MAIN API ENDPOINT WITH FLEXIBLE PARAMS ============
 app.all('/api/:endpoint', globalLimiter, async (req, res) => {
     const userKey = req.query.key || req.body.key;
     const endpoint = req.params.endpoint;
@@ -749,7 +760,8 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
         if (!proxyFn) return res.status(404).json({ error: 'Unknown endpoint', contact: OWNER });
 
         try {
-            const targetUrl = proxyFn({ ...req.query, ...req.body });
+            const params = { ...req.query, ...req.body };
+            const targetUrl = proxyFn(params);
             const response = await axios.get(targetUrl, { timeout: 30000 });
             let cleanedData = cleanResponseData(response.data);
 
