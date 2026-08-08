@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OSINT API HUB | Admin Control Panel</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -24,16 +23,14 @@
             }
         }
     </script>
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0b0f19; color: #f3f4f6; }
-        .glass-card { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .glass-card { background: rgba(17, 24, 39, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
         .glow-blue { box-shadow: 0 0 20px rgba(59, 130, 246, 0.15); }
         .glow-purple { box-shadow: 0 0 20px rgba(139, 92, 246, 0.15); }
-        /* Custom scrollbars */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0b0f19; }
         ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 4px; }
@@ -47,7 +44,7 @@
         <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-500/20">
-                    <i class="fa-solid me-0 fa-terminal text-sm"></i>
+                    <i class="fa-solid fa-terminal text-sm"></i>
                 </div>
                 <div>
                     <h1 class="font-bold text-lg tracking-wide text-white">OSINT <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">HUB</span></h1>
@@ -62,9 +59,9 @@
                     <span class="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 uppercase font-semibold text-[10px]"><%= user ? user.role : 'admin' %></span>
                 </div>
 
-                <a href="/endpoints" target="_blank" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-2 rounded-lg transition border border-gray-700 flex items-center space-x-1">
-                    <i class="fa-solid fa-code text-cyan-400"></i>
-                    <span class="hidden md:inline">API Endpoints</span>
+                <a href="/docs" target="_blank" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-2 rounded-lg transition border border-gray-700 flex items-center space-x-1">
+                    <i class="fa-solid fa-book text-cyan-400"></i>
+                    <span class="hidden md:inline">API Docs</span>
                 </a>
 
                 <a href="/logout" class="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-2 rounded-lg transition border border-red-500/20 flex items-center space-x-1">
@@ -112,7 +109,7 @@
             <div class="glass-card rounded-2xl p-5 border border-gray-800 flex items-center justify-between">
                 <div>
                     <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Owner Support</p>
-                    <a href="https://t.me/<%= owner.replace('@','') %>" target="_blank" class="text-sm font-semibold text-purple-400 hover:underline mt-1 block flex items-center space-x-1">
+                    <a href="https://t.me/<%= owner.replace('@','') %>" target="_blank" class="text-sm font-semibold text-purple-400 hover:underline mt-1 flex items-center space-x-1">
                         <span><%= owner %></span>
                         <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
                     </a>
@@ -123,8 +120,24 @@
             </div>
         </div>
 
+        <!-- ANALYTICS CHART SECTION -->
+        <div class="glass-card rounded-2xl p-6 border border-gray-800 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center space-x-2">
+                        <i class="fa-solid fa-chart-area text-blue-400"></i>
+                        <span>API Request Activity</span>
+                    </h3>
+                    <p class="text-xs text-gray-400">Daily API traffic over the past 7 days</p>
+                </div>
+            </div>
+            <div class="h-64 w-full">
+                <canvas id="analyticsChart"></canvas>
+            </div>
+        </div>
+
         <!-- System Maintenance Banner -->
-        <div class="glass-card rounded-2xl p-5 border border-amber-500/20 bg-amber-500/5 mb-8 flex flex-col md:flex-row items-md-center justify-between gap-4">
+        <div class="glass-card rounded-2xl p-5 border border-amber-500/20 bg-amber-500/5 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div class="flex items-start space-x-3">
                 <div class="w-9 h-9 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <i class="fa-solid fa-triangle-exclamation"></i>
@@ -160,7 +173,7 @@
                             <span>Generated Keys</span>
                             <span class="bg-gray-800 text-gray-300 text-xs px-2.5 py-0.5 rounded-full border border-gray-700"><%= keys.length %></span>
                         </h2>
-                        <p class="text-xs text-gray-400 mt-0.5">Manage permissions, expiration, rate limits, and status</p>
+                        <p class="text-xs text-gray-400 mt-0.5">Manage permissions, expiration, rate limits, and notes</p>
                     </div>
 
                     <div class="flex flex-wrap items-center gap-3">
@@ -239,11 +252,10 @@
                                             </button>
                                         </div>
                                         <% if (k.note_enabled && k.key_note) { %>
-                                            <p class="text-[11px] text-gray-400 italic mt-1"><i class="fa-regular fa-note-sticky text-amber-400 mr-1"></i><%= k.key_note %></p>
+                                            <p class="text-[11px] text-amber-300 italic mt-1 font-sans"><i class="fa-regular fa-note-sticky mr-1"></i><%= k.key_note %></p>
                                         <% } %>
                                     </td>
 
-                                    <!-- ALLOWED APIS DISPLAY -->
                                     <td class="p-4">
                                         <% 
                                             let allowed = [];
@@ -260,7 +272,6 @@
                                         <% } %>
                                     </td>
 
-                                    <!-- KEY TOGGLE & STATUS -->
                                     <td class="p-4">
                                         <div class="flex items-center space-x-2">
                                             <button onclick="toggleKeyEnabled('<%= k.id %>', '<%= k.api_enabled %>')" class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out <%= k.api_enabled ? 'bg-emerald-500' : 'bg-gray-700' %>">
@@ -275,24 +286,21 @@
                                         </div>
                                     </td>
 
-                                    <!-- RATE LIMITS -->
                                     <td class="p-4 font-mono text-[11px]">
                                         <% if (k.unlimited_hits) { %>
                                             <span class="text-purple-400 font-bold"><i class="fa-solid fa-infinity"></i> Unlimited</span>
                                         <% } else if (k.rate_limit_enabled) { %>
                                             <div class="text-gray-300">
-                                                <div>D: <strong class="text-white"><%= k.rate_limit_per_day %></strong></div>
-                                                <div>H: <strong class="text-white"><%= k.rate_limit_per_hour %></strong> | M: <strong class="text-white"><%= k.rate_limit_per_minute %></strong></div>
+                                                <div>Day: <strong class="text-white"><%= k.rate_limit_per_day %></strong></div>
+                                                <div>Min: <strong class="text-white"><%= k.rate_limit_per_minute > 0 ? k.rate_limit_per_minute : 'Off' %></strong></div>
                                             </div>
                                         <% } else { %>
                                             <span class="text-gray-500">Disabled</span>
                                         <% } %>
                                     </td>
 
-                                    <!-- HITS -->
                                     <td class="p-4 font-bold font-mono text-blue-400"><%= (k.hits || 0).toLocaleString() %></td>
 
-                                    <!-- EXPIRES -->
                                     <td class="p-4 text-gray-400 text-[11px]">
                                         <% if (!k.expires_at) { %>
                                             <span class="text-emerald-400 font-semibold">Never</span>
@@ -302,10 +310,9 @@
                                         <% } %>
                                     </td>
 
-                                    <!-- ACTIONS -->
                                     <td class="p-4 text-right">
                                         <div class="flex items-center justify-end space-x-2">
-                                            <button onclick="openEditModal('<%= JSON.stringify(k) %>')" class="p-2 bg-gray-800 hover:bg-gray-700 text-blue-400 rounded-lg transition" title="Edit Key">
+                                            <button onclick='openEditModal(<%= JSON.stringify(k) %>)' class="p-2 bg-gray-800 hover:bg-gray-700 text-blue-400 rounded-lg transition" title="Edit Key">
                                                 <i class="fa-solid fa-pen"></i>
                                             </button>
                                             <form action="/admin/delete-key" method="POST" onsubmit="return confirm('Delete this key permanently?')" class="inline">
@@ -329,7 +336,7 @@
             <div class="glass-card rounded-2xl border border-gray-800 p-6 mb-8">
                 <div class="mb-6">
                     <h2 class="text-lg font-bold text-white">Global API Endpoints Control</h2>
-                    <p class="text-xs text-gray-400 mt-0.5">Toggle individual services ON/OFF globally or customize their display names</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Toggle individual services ON/OFF globally or customize display names</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -339,13 +346,11 @@
                                 <div class="flex items-center justify-between mb-3">
                                     <span class="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20"><%= api.endpoint %></span>
                                     
-                                    <!-- Endpoint Global Switch -->
                                     <button onclick="toggleApiEndpoint('<%= api.id %>', '<%= api.is_active %>')" class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out <%= api.is_active ? 'bg-emerald-500' : 'bg-gray-700' %>">
                                         <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out <%= api.is_active ? 'translate-x-4' : 'translate-x-0' %>"></span>
                                     </button>
                                 </div>
 
-                                <!-- Editable Display Name -->
                                 <div class="mb-3">
                                     <label class="block text-[10px] text-gray-400 uppercase tracking-wider mb-1">Display Name</label>
                                     <div class="flex items-center space-x-2">
@@ -385,7 +390,6 @@
                     <input type="text" name="name" placeholder="e.g. Client John" required class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-blue-500">
                 </div>
 
-                <!-- Custom Key Option -->
                 <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-800">
                     <label class="flex items-center space-x-2 cursor-pointer text-gray-300 font-medium mb-2">
                         <input type="checkbox" name="enable_custom" onchange="document.getElementById('customKeyInput').classList.toggle('hidden', !this.checked)" class="rounded border-gray-700 bg-gray-800 text-blue-500">
@@ -394,7 +398,6 @@
                     <input type="text" id="customKeyInput" name="custom_key" placeholder="e.g. VIP_SAHIL_2026" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500 hidden uppercase">
                 </div>
 
-                <!-- Select APIs (Multi-Select Support) -->
                 <div>
                     <label class="block text-gray-300 font-medium mb-1">Allowed APIs (Hold Ctrl/Cmd to select multiple)</label>
                     <select name="selected_apis" multiple class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500 h-28">
@@ -405,7 +408,6 @@
                     </select>
                 </div>
 
-                <!-- Expiry -->
                 <div>
                     <label class="block text-gray-300 font-medium mb-1">Expiration Period</label>
                     <select name="expiry" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-blue-500">
@@ -416,30 +418,24 @@
                     </select>
                 </div>
 
-                <!-- Rate Limit Options -->
                 <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-800 space-y-3">
                     <label class="flex items-center space-x-2 cursor-pointer text-gray-300 font-medium">
                         <input type="checkbox" name="unlimited_hits" value="true" onchange="document.getElementById('rateLimitsBox').classList.toggle('hidden', this.checked)" class="rounded border-gray-700 bg-gray-800 text-purple-500">
                         <span>Unlimited Requests (Bypass Rate Limits)</span>
                     </label>
 
-                    <div id="rateLimitsBox" class="grid grid-cols-3 gap-3 pt-2">
+                    <div id="rateLimitsBox" class="grid grid-cols-2 gap-3 pt-2">
                         <div>
-                            <label class="block text-gray-400 text-[10px] mb-1">Per Day</label>
+                            <label class="block text-gray-400 text-[10px] mb-1">Per Day Limit</label>
                             <input type="number" name="rate_limit_per_day" value="100" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white">
                         </div>
                         <div>
-                            <label class="block text-gray-400 text-[10px] mb-1">Per Hour</label>
-                            <input type="number" name="rate_limit_per_hour" value="20" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white">
-                        </div>
-                        <div>
-                            <label class="block text-gray-400 text-[10px] mb-1">Per Minute</label>
+                            <label class="block text-gray-400 text-[10px] mb-1">Per Minute Limit (0 = Off)</label>
                             <input type="number" name="rate_limit_per_minute" value="5" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white">
                         </div>
                     </div>
                 </div>
 
-                <!-- Note -->
                 <div>
                     <label class="block text-gray-300 font-medium mb-1">Key Note / Remark (Optional)</label>
                     <input type="text" name="key_note" placeholder="e.g. Paid $20 via Telegram" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white">
@@ -509,24 +505,20 @@
                         <span>Unlimited Requests</span>
                     </label>
 
-                    <div class="grid grid-cols-3 gap-3 pt-2">
+                    <div class="grid grid-cols-2 gap-3 pt-2">
                         <div>
                             <label class="block text-gray-400 text-[10px] mb-1">Day Limit</label>
                             <input type="number" id="edit_limit_day" name="rate_limit_per_day" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white">
                         </div>
                         <div>
-                            <label class="block text-gray-400 text-[10px] mb-1">Hour Limit</label>
-                            <input type="number" id="edit_limit_hour" name="rate_limit_per_hour" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white">
-                        </div>
-                        <div>
-                            <label class="block text-gray-400 text-[10px] mb-1">Minute Limit</label>
+                            <label class="block text-gray-400 text-[10px] mb-1">Minute Limit (0 = Off)</label>
                             <input type="number" id="edit_limit_min" name="rate_limit_per_minute" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white">
                         </div>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-gray-300 font-medium mb-1">Key Note</label>
+                    <label class="block text-gray-300 font-medium mb-1">Key Note / Remark (Leave blank to remove)</label>
                     <input type="text" id="edit_note" name="key_note" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-white">
                 </div>
 
@@ -583,7 +575,6 @@
             alert('Copied to clipboard: ' + text);
         }
 
-        // SELECT ALL CHECKBOXES
         function toggleSelectAll(master) {
             document.querySelectorAll('.key-checkbox').forEach(cb => cb.checked = master.checked);
             updateSelectedCount();
@@ -594,7 +585,6 @@
             document.getElementById('selectedCount').innerText = `(${count} selected)`;
         }
 
-        // BULK ACTIONS
         function bulkAction(action) {
             const selected = Array.from(document.querySelectorAll('.key-checkbox:checked')).map(cb => cb.value);
             if (selected.length === 0) return alert('Please select at least one key!');
@@ -613,7 +603,6 @@
             }
         }
 
-        // TOGGLE INDIVIDUAL KEY ENABLED
         function toggleKeyEnabled(keyId, currentStatus) {
             fetch('/admin/toggle-key-enabled', {
                 method: 'POST',
@@ -622,7 +611,6 @@
             }).then(() => location.reload());
         }
 
-        // TOGGLE GLOBAL API ENDPOINT
         function toggleApiEndpoint(apiId, currentStatus) {
             fetch('/admin/toggle-api', {
                 method: 'POST',
@@ -631,7 +619,6 @@
             }).then(() => location.reload());
         }
 
-        // SAVE API DISPLAY NAME
         function saveApiName(apiId) {
             const name = document.getElementById('api_name_' + apiId).value;
             fetch('/admin/update-api-name', {
@@ -646,23 +633,19 @@
             });
         }
 
-        // OPEN EDIT KEY MODAL
-        function openEditModal(keyJson) {
-            const k = JSON.parse(keyJson);
+        function openEditModal(k) {
             document.getElementById('edit_key_id').value = k.id;
             document.getElementById('editKeyDisplay').innerText = k.key;
             document.getElementById('edit_name').value = k.name || '';
             document.getElementById('edit_status').value = k.status;
             document.getElementById('edit_unlimited').checked = Boolean(k.unlimited_hits);
             document.getElementById('edit_limit_day').value = k.rate_limit_per_day || 100;
-            document.getElementById('edit_limit_hour').value = k.rate_limit_per_hour || 20;
-            document.getElementById('edit_limit_min').value = k.rate_limit_per_minute || 5;
+            document.getElementById('edit_limit_min').value = k.rate_limit_per_minute || 0;
             document.getElementById('edit_note').value = k.key_note || '';
 
             openModal('editKeyModal');
         }
 
-        // SUBMIT EDIT KEY FORM VIA AJAX
         document.getElementById('editKeyForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);
@@ -676,8 +659,50 @@
             .then(res => res.json())
             .then(resData => {
                 if (resData.success) location.reload();
-                else alert('Failed to update key');
+                else alert('Failed to update key: ' + (resData.error || 'Unknown error'));
             });
+        });
+
+        // INITIALIZE CHART.JS
+        const chartRawData = <%- JSON.stringify(chartData || []) %>;
+        const ctx = document.getElementById('analyticsChart').getContext('2d');
+        
+        const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.4)');
+        gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartRawData.map(d => d.date),
+                datasets: [{
+                    label: 'API Requests',
+                    data: chartRawData.map(d => d.total_calls),
+                    borderColor: '#3b82f6',
+                    borderWidth: 2,
+                    backgroundColor: gradient,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#3b82f6',
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#9ca3af', font: { size: 10 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#9ca3af', font: { size: 10 } },
+                        beginAtZero: true
+                    }
+                }
+            }
         });
     </script>
 </body>
