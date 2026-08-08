@@ -37,7 +37,7 @@ db.serialize(() => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    // API Keys table
+    // API Keys table (Removed rate_limit_per_hour dependency)
     db.run(`CREATE TABLE IF NOT EXISTS api_keys (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         key TEXT UNIQUE,
@@ -53,7 +53,6 @@ db.serialize(() => {
         is_custom INTEGER DEFAULT 0,
         rate_limit_enabled INTEGER DEFAULT 1,
         rate_limit_per_day INTEGER DEFAULT 100,
-        rate_limit_per_hour INTEGER DEFAULT 20,
         rate_limit_per_minute INTEGER DEFAULT 5,
         key_note TEXT DEFAULT '',
         note_enabled INTEGER DEFAULT 0,
@@ -61,15 +60,14 @@ db.serialize(() => {
         api_enabled INTEGER DEFAULT 1
     )`);
 
-    // Rate limit tracking with UNIQUE CONSTRAINT for upsert
+    // Rate limit tracking with UNIQUE CONSTRAINT for minute level tracking
     db.run(`CREATE TABLE IF NOT EXISTS rate_limit_tracking (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         api_key TEXT,
         date TEXT,
-        hour INTEGER,
-        minute INTEGER,
+        minute_timestamp INTEGER,
         requests INTEGER DEFAULT 0,
-        UNIQUE(api_key, date, hour, minute)
+        UNIQUE(api_key, date, minute_timestamp)
     )`);
 
     // Analytics
@@ -140,7 +138,6 @@ db.serialize(() => {
                 ['telegram-num', '📞 Telegram to Number', '/api/telegram-num', 'term', '{"term":"7577179320"}', 'Get number from Telegram ID'],
                 ['family-info', '👨‍👩‍👧‍👦 Family Info', '/api/family-info', 'q', '{"q":"942660008471"}', 'Family information lookup'],
                 ['number-info', '📱 Number Info', '/api/number-info', 'q', '{"q":"9876543321"}', 'Complete number information'],
-                ['aadhar-info', '🆔 Aadhar Info', '/api/aadhar-info', 'q', '{"q":"942660008471"}', 'Aadhar card information'],
                 ['num-newinfo', '🔍 Number New Info', '/api/num-newinfo', 'q', '{"q":"1234597890"}', 'Advanced number information'],
                 ['email-info', '📧 Email Info', '/api/email-info', 'q', '{"q":"test@email.com"}', 'Email address information'],
                 ['family', '👨‍👩‍👧‍👦 Family Tree', '/api/family', 'term', '{"term":"979607168114"}', 'Family relationship lookup'],
@@ -208,7 +205,6 @@ const apiProxyMap = {
     'telegram-num': (p) => `https://tg-to-num-ten.vercel.app/tg?key=sahil_X&num=${p.term || p.id || p.username}`,
     'family-info': (p) => `https://osint.invalidayushh.workers.dev/adhar?key=Sahil&q=${p.q || p.term || p.id}`,
     'number-info': (p) => `https://osint.invalidayushh.workers.dev/num?key=Sahil&q=${p.q || p.number || p.num}`,
-    'aadhar-info': (p) => `https://osint.invalidayushh.workers.dev/adhar?key=Sahil&q=${p.q || p.num || p.aadhar}`,
     'num-newinfo': (p) => `https://leakapi.dpdns.org/search?q=${p.q || p.number || p.num}`,
     'email-info': (p) => `https://osint.invalidayushh.workers.dev/email?key=Sahil&q=${p.q || p.email}`,
     'insta': (p) => `https://osint.invalidayushh.workers.dev/insta?key=Sahil&q=${p.username}`,
@@ -224,7 +220,6 @@ const apiProxyMap = {
     'git': (p) => `https://ft-osint-api.duckdns.org/api/git?key=${MASTER_KEYS.ftosint}&username=${p.username}`,
     'bgmi': (p) => `https://ft-osint-api.duckdns.org/api/bgmi?key=${MASTER_KEYS.ftosint}&uid=${p.uid}`,
     'ff': (p) => `https://ft-osint-api.duckdns.org/api/ff?key=${MASTER_KEYS.ftosint}&uid=${p.uid}`,
-    'aadhar': (p) => `https://ft-osint-api.duckdns.org/api/aadhar?key=${MASTER_KEYS.ftosint}&num=${p.num}`,
     'ai-image': (p) => `https://ayaanmods.site/aiimage.php?key=${MASTER_KEYS.ayaanmods}&prompt=${p.prompt}`,
     'leak': (p) => `https://leakapi.dpdns.org/chain?q=${p.number}`,
     'mistral': `mistral-direct`,
@@ -408,7 +403,7 @@ app.post('/admin/generate-key', requireAuth, (req, res) => {
         name, expiry, unlimited_hits, 
         selected_api,
         custom_key,
-        rate_limit_enabled, rate_limit_per_day, rate_limit_per_hour, rate_limit_per_minute,
+        rate_limit_enabled, rate_limit_per_day, rate_limit_per_minute,
         note_enabled, key_note, custom_expiry_date, custom_expiry_time
     } = req.body;
     
@@ -448,14 +443,15 @@ app.post('/admin/generate-key', requireAuth, (req, res) => {
         
         const isUnlimited = unlimited_hits === 'true' || unlimited_hits === 'on';
         const rateLimitEnabled = isUnlimited ? 0 : 1;
-        const noteText = key_note || '';
-        
+        const noteText = key_note ? key_note.trim() : '';
+        const isNoteEnabled = (note_enabled === 'on' || note_enabled === 'true' || note_enabled === '1' || noteText.length > 0) ? 1 : 0;
+
         db.run(`INSERT INTO api_keys (
                 key, name, owner_username, owner_channel, 
                 expires_at, unlimited_hits, allowed_apis, status, is_custom,
-                rate_limit_enabled, rate_limit_per_day, rate_limit_per_hour, rate_limit_per_minute,
+                rate_limit_enabled, rate_limit_per_day, rate_limit_per_minute,
                 key_note, note_enabled, last_updated, api_enabled
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, 1)`, 
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, 1)`, 
             [
                 apiKey, name, OWNER, CHANNEL, 
                 expires_at, 
@@ -464,10 +460,9 @@ app.post('/admin/generate-key', requireAuth, (req, res) => {
                 isCustom ? 1 : 0,
                 rateLimitEnabled,
                 isUnlimited ? 0 : (parseInt(rate_limit_per_day) || 100),
-                isUnlimited ? 0 : (parseInt(rate_limit_per_hour) || 20),
-                isUnlimited ? 0 : (parseInt(rate_limit_per_minute) || 5),
+                isUnlimited ? 0 : (parseInt(rate_limit_per_minute) || 0),
                 noteText,
-                noteText ? 1 : 0,
+                isNoteEnabled,
                 new Date().toISOString()
             ], 
             function(err) {
@@ -494,8 +489,8 @@ app.post('/admin/generate-key', requireAuth, (req, res) => {
 app.post('/admin/edit-key', requireAuth, (req, res) => {
     const { 
         key_id, name, expiry, unlimited_hits, 
-        rate_limit_per_day, rate_limit_per_hour, rate_limit_per_minute,
-        key_note, status, selected_api, api_enabled
+        rate_limit_per_day, rate_limit_per_minute,
+        key_note, note_enabled, status, selected_api, api_enabled
     } = req.body;
 
     let expires_at = null;
@@ -515,6 +510,8 @@ app.post('/admin/edit-key', requireAuth, (req, res) => {
     const isUnlimited = unlimited_hits === 'true' || unlimited_hits === 'on' || unlimited_hits === '1' || unlimited_hits === 1;
     const rateLimitEnabled = isUnlimited ? 0 : 1;
     const enabled = api_enabled === 'true' || api_enabled === 1 || api_enabled === '1' ? 1 : 0;
+    const noteText = key_note ? key_note.trim() : '';
+    const isNoteEnabled = (note_enabled === 'on' || note_enabled === 'true' || note_enabled === '1' || noteText.length > 0) ? 1 : 0;
 
     const query = `UPDATE api_keys SET 
         name = ?, 
@@ -524,7 +521,6 @@ app.post('/admin/edit-key', requireAuth, (req, res) => {
         unlimited_hits = ?, 
         rate_limit_enabled = ?, 
         rate_limit_per_day = ?, 
-        rate_limit_per_hour = ?, 
         rate_limit_per_minute = ?, 
         status = ?, 
         api_enabled = ?, 
@@ -535,13 +531,12 @@ app.post('/admin/edit-key', requireAuth, (req, res) => {
     const values = [
         name,
         allowedApisJson,
-        key_note || '',
-        key_note ? 1 : 0,
+        noteText,
+        isNoteEnabled,
         isUnlimited ? 1 : 0,
         rateLimitEnabled,
         parseInt(rate_limit_per_day) || 100,
-        parseInt(rate_limit_per_hour) || 20,
-        parseInt(rate_limit_per_minute) || 5,
+        parseInt(rate_limit_per_minute) || 0,
         status || 'active',
         enabled,
         expires_at,
@@ -591,7 +586,7 @@ app.post('/admin/update-settings', requireAuth, (req, res) => {
         });
 });
 
-// ============ MAIN API ENDPOINT WITH WORKING RATE LIMIT ============
+// ============ MAIN API ENDPOINT WITH RATE LIMIT & KEY NOTE ============
 app.all('/api/:endpoint', globalLimiter, async (req, res) => {
     const userKey = req.query.key || req.body.key;
     const endpoint = req.params.endpoint;
@@ -624,62 +619,83 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
         }
         
         // ================= RATE LIMITING LOGIC =================
+        let rateLimitInfo = {};
+        
         if (keyData.unlimited_hits !== 1 && keyData.rate_limit_enabled === 1) {
             const now = new Date();
             const today = now.toISOString().split('T')[0];
-            const currentHour = now.getHours();
-            const currentMinute = now.getMinutes();
+            const currentMinuteTs = Math.floor(now.getTime() / (60 * 1000));
 
-            // 1. Minute Limit Check
-            const minuteLimit = keyData.rate_limit_per_minute || 5;
-            const minuteCount = await new Promise((resolve) => {
-                db.get(
-                    'SELECT requests FROM rate_limit_tracking WHERE api_key = ? AND date = ? AND hour = ? AND minute = ?',
-                    [userKey, today, currentHour, currentMinute],
-                    (err, row) => resolve(row ? row.requests : 0)
-                );
-            });
+            const perMinuteLimit = parseInt(keyData.rate_limit_per_minute) || 0;
+            const perDayLimit = parseInt(keyData.rate_limit_per_day) || 100;
 
-            if (minuteCount >= minuteLimit) {
-                return res.status(429).json({ error: `Rate limit exceeded (${minuteLimit} req/min). Try again in a minute.`, contact: OWNER });
-            }
-
-            // 2. Hour Limit Check
-            const hourlyLimit = keyData.rate_limit_per_hour || 20;
-            const hourlyCount = await new Promise((resolve) => {
-                db.get(
-                    'SELECT SUM(requests) as total FROM rate_limit_tracking WHERE api_key = ? AND date = ? AND hour = ?',
-                    [userKey, today, currentHour],
-                    (err, row) => resolve(row ? row.total || 0 : 0)
-                );
-            });
-
-            if (hourlyCount >= hourlyLimit) {
-                return res.status(429).json({ error: `Hourly rate limit exceeded (${hourlyLimit} req/hour)`, contact: OWNER });
-            }
-
-            // 3. Daily Limit Check
-            const dailyLimit = keyData.rate_limit_per_day || 100;
+            // 1. Daily Usage Check
             const dailyCount = await new Promise((resolve) => {
                 db.get(
                     'SELECT SUM(requests) as total FROM rate_limit_tracking WHERE api_key = ? AND date = ?',
                     [userKey, today],
-                    (err, row) => resolve(row ? row.total || 0 : 0)
+                    (err, row) => resolve(row ? (row.total || 0) : 0)
                 );
             });
 
-            if (dailyCount >= dailyLimit) {
-                return res.status(429).json({ error: `Daily rate limit exceeded (${dailyLimit} req/day)`, contact: OWNER });
+            if (perDayLimit > 0 && dailyCount >= perDayLimit) {
+                return res.status(429).json({
+                    success: false,
+                    error: `Daily rate limit exceeded (${perDayLimit} req/day)`,
+                    rate_limit: {
+                        per_day: { limit: perDayLimit, used: dailyCount, remaining: 0 }
+                    },
+                    contact: OWNER
+                });
             }
 
-            // Record this hit in Rate Limit Tracker
+            // 2. Minute Limit Check (Only if perMinuteLimit > 0)
+            let minuteCount = 0;
+            if (perMinuteLimit > 0) {
+                minuteCount = await new Promise((resolve) => {
+                    db.get(
+                        'SELECT requests FROM rate_limit_tracking WHERE api_key = ? AND minute_timestamp = ?',
+                        [userKey, currentMinuteTs],
+                        (err, row) => resolve(row ? row.requests : 0)
+                    );
+                });
+
+                if (minuteCount >= perMinuteLimit) {
+                    return res.status(429).json({
+                        success: false,
+                        error: `Per-minute rate limit exceeded (${perMinuteLimit} req/min). Please wait a moment.`,
+                        rate_limit: {
+                            per_minute: { limit: perMinuteLimit, used: minuteCount, remaining: 0 },
+                            per_day: { limit: perDayLimit, used: dailyCount, remaining: Math.max(0, perDayLimit - dailyCount) }
+                        },
+                        contact: OWNER
+                    });
+                }
+            }
+
+            // Record hit
             db.run(
-                `INSERT INTO rate_limit_tracking (api_key, date, hour, minute, requests) 
-                 VALUES (?, ?, ?, ?, 1) 
-                 ON CONFLICT(api_key, date, hour, minute) 
+                `INSERT INTO rate_limit_tracking (api_key, date, minute_timestamp, requests) 
+                 VALUES (?, ?, ?, 1) 
+                 ON CONFLICT(api_key, date, minute_timestamp) 
                  DO UPDATE SET requests = requests + 1`,
-                [userKey, today, currentHour, currentMinute]
+                [userKey, today, currentMinuteTs]
             );
+
+            // Construct details
+            rateLimitInfo.per_day = {
+                limit: perDayLimit,
+                used: dailyCount + 1,
+                remaining: Math.max(0, perDayLimit - (dailyCount + 1))
+            };
+
+            if (perMinuteLimit > 0) {
+                rateLimitInfo.per_minute = {
+                    limit: perMinuteLimit,
+                    used: minuteCount + 1,
+                    remaining: Math.max(0, perMinuteLimit - (minuteCount + 1))
+                };
+            }
         }
 
         // Increase Hits Counter
@@ -693,6 +709,17 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
             const targetUrl = proxyFn({ ...req.query, ...req.body });
             const response = await axios.get(targetUrl, { timeout: 30000 });
             let cleanedData = cleanResponseData(response.data);
+
+            // Attach Rate Limit metadata
+            if (Object.keys(rateLimitInfo).length > 0) {
+                cleanedData.rate_limit = rateLimitInfo;
+            }
+
+            // Attach Key Note if enabled and set
+            if ((keyData.note_enabled === 1 || keyData.note_enabled === '1') && keyData.key_note) {
+                cleanedData.key_note = keyData.key_note;
+            }
+
             res.json(cleanedData);
         } catch (error) {
             res.status(500).json({ error: 'Target API request failed', details: error.message });
