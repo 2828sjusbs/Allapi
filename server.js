@@ -68,11 +68,29 @@ db.serialize(() => {
         date TEXT,
         hour INTEGER,
         minute INTEGER,
-        requests INTEGER DEFAULT 0,
-        UNIQUE(api_key, date, hour, minute)
+        requests INTEGER DEFAULT 0
     )`);
 
-    // Available APIs table
+    // Analytics
+    db.run(`CREATE TABLE IF NOT EXISTS analytics (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        api_key TEXT,
+        endpoint TEXT,
+        status_code INTEGER,
+        ip_address TEXT,
+        date DATE DEFAULT CURRENT_DATE
+    )`);
+
+    // Daily calls
+    db.run(`CREATE TABLE IF NOT EXISTS daily_calls (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        api_key TEXT,
+        date DATE,
+        calls INTEGER DEFAULT 0,
+        UNIQUE(api_key, date)
+    )`);
+
+    // Available APIs
     db.run(`CREATE TABLE IF NOT EXISTS available_apis (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
@@ -90,14 +108,14 @@ db.serialize(() => {
         maintenance_message TEXT DEFAULT 'API is currently under maintenance.'
     )`);
 
-    // Default settings
+    // Insert default settings if not exists
     db.get(`SELECT * FROM settings WHERE id = 1`, [], (err, row) => {
         if (!row) {
             db.run(`INSERT INTO settings (id, maintenance_message) VALUES (1, 'API is currently under maintenance.')`);
         }
     });
 
-    // Default Users
+    // Default users
     db.get(`SELECT * FROM users WHERE username = 'main'`, [], (err, row) => {
         if (!row) {
             db.run(`INSERT INTO users (username, password, role, created_by) VALUES (?, ?, ?, ?)`, 
@@ -112,7 +130,7 @@ db.serialize(() => {
         }
     });
 
-    // Default APIs
+    // Insert default APIs if empty
     db.get(`SELECT COUNT(*) as count FROM available_apis`, [], (err, row) => {
         if (row && row.count === 0) {
             const apis = [
@@ -145,6 +163,7 @@ db.serialize(() => {
             apis.forEach(api => {
                 db.run(`INSERT INTO available_apis (name, display_name, endpoint, required_params, example_params, description) VALUES (?, ?, ?, ?, ?, ?)`, api);
             });
+            console.log('✅ ' + apis.length + ' APIs inserted');
         }
     });
 });
@@ -165,13 +184,20 @@ app.use(session({
 
 const globalLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 60,
+    max: 30,
     keyGenerator: (req) => req.query.key || req.ip,
-    handler: (req, res) => res.json({ error: 'Global rate limit exceeded', contact: OWNER })
+    handler: (req, res) => res.json({ error: 'Rate limit exceeded', contact: OWNER })
 });
 
 function requireAuth(req, res, next) {
     if (!req.session.user) return res.redirect('/login');
+    next();
+}
+
+function requireHeadAdmin(req, res, next) {
+    if (!req.session.user || req.session.user.role !== 'head_admin') {
+        return res.status(403).json({ error: 'Access denied' });
+    }
     next();
 }
 
@@ -205,7 +231,7 @@ const apiProxyMap = {
     'veh-to-num': (p) => `https://vehicleinfo.noobgamingv40.workers.dev/fetch?vehicle=${p.vehicle || p.term}`
 };
 
-// ============ CLEAN RESPONSE FUNCTION ============
+// ============ CLEAN FUNCTION ============
 function cleanResponseData(data) {
     if (!data || typeof data !== 'object') return data;
     let cleaned = JSON.parse(JSON.stringify(data));
@@ -252,7 +278,7 @@ function cleanResponseData(data) {
     return cleaned;
 }
 
-// ============ WEB ROUTES ============
+// ============ ROUTES ============
 
 app.get('/', (req, res) => {
     db.get('SELECT COUNT(*) as total_apis FROM available_apis', [], (err, apisCount) => {
@@ -294,6 +320,24 @@ app.get('/endpoints', (req, res) => {
     });
 });
 
+app.get('/docs', (req, res) => {
+    db.all('SELECT * FROM available_apis WHERE is_active = 1', [], (err, apis) => {
+        const formattedApis = (apis || []).map(api => {
+            let params = {};
+            try { params = JSON.parse(api.required_params || '{}'); } catch(e) { params = {}; }
+            const paramName = Object.keys(params)[0] || 'param';
+            return { ...api, param_name: paramName, param_example: params[paramName] || 'value' };
+        });
+        res.render('docs', { 
+            apis: formattedApis, 
+            baseUrl: req.protocol + '://' + req.get('host'),
+            owner: OWNER,
+            channel: CHANNEL,
+            user: req.session.user || null
+        });
+    });
+});
+
 app.get('/login', (req, res) => { res.render('login', { error: req.query.error || null }); });
 
 app.post('/login', async (req, res) => {
@@ -305,7 +349,7 @@ app.post('/login', async (req, res) => {
         const match = await bcrypt.compare(password, user.password);
         if (match) {
             req.session.user = { id: user.id, username: user.username, role: user.role };
-            return res.redirect('/admin/dashboard');
+            return res.redirect(user.role === 'head_admin' ? '/head-admin/dashboard' : '/admin/dashboard');
         }
         return res.redirect('/login?error=invalid');
     });
@@ -313,9 +357,37 @@ app.post('/login', async (req, res) => {
 
 app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/'); });
 
-// ============ DASHBOARD & KEY MANAGEMENT ============
+// ============ ADMIN ROUTES ============
+
+app.get('/head-admin/dashboard', requireHeadAdmin, (req, res) => {
+    db.all('SELECT * FROM users WHERE role != "head_admin"', [], (err, admins) => {
+        db.all('SELECT * FROM api_keys ORDER BY created_at DESC', [], (err, keys) => {
+            db.get('SELECT SUM(hits) as total_hits FROM api_keys', [], (err, totalHits) => {
+                db.get('SELECT * FROM settings WHERE id = 1', [], (err, settings) => {
+                    db.all('SELECT * FROM available_apis WHERE is_active = 1', [], (err, apis) => {
+                        res.render('head_admin_dashboard', {
+                            user: req.session.user,
+                            admins: admins || [],
+                            keys: keys || [],
+                            totalHits: totalHits ? totalHits.total_hits : 0,
+                            popular: [],
+                            topUsers: [],
+                            todayCalls: {},
+                            settings: settings || { maintenance_message: 'API is currently under maintenance.' },
+                            apis: apis || [],
+                            owner: OWNER,
+                            channel: CHANNEL
+                        });
+                    });
+                });
+            });
+        });
+    });
+});
 
 app.get('/admin/dashboard', requireAuth, (req, res) => {
+    if (req.session.user.role === 'head_admin') return res.redirect('/head-admin/dashboard');
+    
     db.all('SELECT * FROM api_keys ORDER BY created_at DESC', [], (err, keys) => {
         db.get('SELECT SUM(hits) as total FROM api_keys', [], (err, hits) => {
             db.get('SELECT COUNT(*) as active FROM api_keys WHERE status="active"', [], (err, active) => {
@@ -332,6 +404,9 @@ app.get('/admin/dashboard', requireAuth, (req, res) => {
                             totalHits: hits ? hits.total : 0,
                             active: active ? active.active : 0,
                             apis: formattedApis,
+                            popular: [],
+                            topUsers: [],
+                            todayCalls: {},
                             user: req.session.user,
                             baseUrl: req.protocol + '://' + req.get('host'),
                             settings: settings || { maintenance_message: 'API is currently under maintenance.' },
@@ -345,33 +420,57 @@ app.get('/admin/dashboard', requireAuth, (req, res) => {
     });
 });
 
+// ============ GENERATE KEY WITH SINGLE SELECT ============
 app.post('/admin/generate-key', requireAuth, (req, res) => {
     const { 
         name, expiry, unlimited_hits, 
-        selected_api,
+        selected_api,  // ✅ SINGLE API SELECT
         custom_key,
-        rate_limit_per_day, rate_limit_per_hour, rate_limit_per_minute,
-        key_note
+        rate_limit_enabled, rate_limit_per_day, rate_limit_per_hour, rate_limit_per_minute,
+        note_enabled, key_note, custom_expiry_date, custom_expiry_time
     } = req.body;
     
-    const isCustomEnabled = req.body.enable_custom === 'on' || req.body.enable_custom === 'true';
+    const isCustomEnabled = req.body.enable_custom === 'on' || req.body.enable_custom === true;
+    
+    console.log('📝 Generating key - Selected API:', selected_api);
+    
+    if (isCustomEnabled && (!custom_key || custom_key.trim() === '')) {
+        return res.status(400).send('❌ Please enter a custom key or disable custom key option');
+    }
     
     function createKey(apiKey, isCustom) {
         let expires_at = null;
         const now = new Date();
         
-        if (expiry === '3d') expires_at = new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000));
-        else if (expiry === '7d') expires_at = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
-        else if (expiry === '30d') expires_at = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+        // Handle expiry
+        if (expiry === '3d') {
+            expires_at = new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000));
+        } else if (expiry === '7d') {
+            expires_at = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
+        } else if (expiry === '30d') {
+            expires_at = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+        } else if (expiry === 'custom' && custom_expiry_date) {
+            const dateTime = new Date(`${custom_expiry_date}T${custom_expiry_time || '23:59'}`);
+            if (!isNaN(dateTime)) {
+                expires_at = dateTime;
+            }
+        }
         
+        // ✅ Handle SINGLE API selection
         let allowedApisJson = '["all"]';
-        if (selected_api && selected_api !== 'all') {
-            allowedApisJson = JSON.stringify([selected_api]);
+        if (selected_api) {
+            if (selected_api === 'all') {
+                allowedApisJson = '["all"]';
+            } else {
+                // ✅ Single API ko array mein convert karo
+                allowedApisJson = JSON.stringify([selected_api]);
+            }
         }
         
         const isUnlimited = unlimited_hits === 'true' || unlimited_hits === 'on';
-        const rateLimitEnabled = isUnlimited ? 0 : 1;
-        const noteText = key_note || '';
+        const rateLimitEnabled = isUnlimited ? 0 : (rate_limit_enabled === 'on' || rate_limit_enabled === 'true' ? 1 : 0);
+        const noteEnabled = note_enabled === 'on' || note_enabled === 'true' ? 1 : 0;
+        const noteText = noteEnabled ? (key_note || '') : '';
         
         db.run(`INSERT INTO api_keys (
                 key, name, owner_username, owner_channel, 
@@ -390,21 +489,34 @@ app.post('/admin/generate-key', requireAuth, (req, res) => {
                 isUnlimited ? 0 : (parseInt(rate_limit_per_hour) || 20),
                 isUnlimited ? 0 : (parseInt(rate_limit_per_minute) || 5),
                 noteText,
-                noteText ? 1 : 0,
+                noteEnabled,
                 new Date().toISOString()
             ], 
             function(err) {
-                if (err) return res.status(500).send('Database error: ' + err.message);
+                if (err) {
+                    console.error('❌ DB Error:', err.message);
+                    return res.status(500).send('Database error: ' + err.message);
+                }
+                console.log('✅ Key created successfully:', apiKey);
                 res.redirect('/admin/dashboard');
             });
     }
     
-    if (isCustomEnabled && custom_key) {
-        let apiKey = custom_key.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '');
-        if (apiKey.length < 3) return res.status(400).send('Custom key must be at least 3 characters');
+    if (isCustomEnabled && custom_key && custom_key.trim() !== '') {
+        let apiKey = custom_key.trim().toUpperCase();
+        apiKey = apiKey.replace(/[^A-Z0-9_]/g, '');
+        
+        if (apiKey.length < 3) {
+            return res.status(400).send('❌ Custom key must be at least 3 characters');
+        }
         
         db.get('SELECT key FROM api_keys WHERE key = ?', [apiKey], (err, existing) => {
-            if (existing) return res.status(400).send('Key already exists: ' + apiKey);
+            if (err) {
+                return res.status(500).send('Database error');
+            }
+            if (existing) {
+                return res.status(400).send('❌ Key already exists: ' + apiKey);
+            }
             createKey(apiKey, true);
         });
     } else {
@@ -413,40 +525,76 @@ app.post('/admin/generate-key', requireAuth, (req, res) => {
     }
 });
 
+// ============ EDIT KEY WITH SINGLE SELECT ============
 app.post('/admin/edit-key', requireAuth, (req, res) => {
     const { 
         key_id, name, expiry, unlimited_hits, 
-        rate_limit_per_day, rate_limit_per_hour, rate_limit_per_minute,
-        key_note, status, selected_api
+        rate_limit_enabled, rate_limit_per_day, rate_limit_per_hour, rate_limit_per_minute,
+        note_enabled, key_note, status,
+        selected_api,  // ✅ SINGLE API SELECT
+        custom_expiry_date, custom_expiry_time,
+        api_enabled
     } = req.body;
 
     let expires_at = null;
     const now = new Date();
-    if (expiry === '3d') expires_at = new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000));
-    else if (expiry === '7d') expires_at = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
-    else if (expiry === '30d') expires_at = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
 
+    if (expiry === '3d') {
+        expires_at = new Date(now.getTime() + (3 * 24 * 60 * 60 * 1000));
+    } else if (expiry === '7d') {
+        expires_at = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
+    } else if (expiry === '30d') {
+        expires_at = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+    } else if (expiry === 'custom' && custom_expiry_date) {
+        const dateTime = new Date(`${custom_expiry_date}T${custom_expiry_time || '23:59'}`);
+        if (!isNaN(dateTime)) {
+            expires_at = dateTime;
+        }
+    }
+
+    // ✅ Handle SINGLE API selection
     let allowedApisJson = '["all"]';
-    if (selected_api && selected_api !== 'all') {
-        allowedApisJson = JSON.stringify([selected_api]);
+    if (selected_api) {
+        if (selected_api === 'all') {
+            allowedApisJson = '["all"]';
+        } else {
+            allowedApisJson = JSON.stringify([selected_api]);
+        }
     }
 
     const isUnlimited = unlimited_hits === 'true' || unlimited_hits === 'on' || unlimited_hits === 1;
-    const rateLimitEnabled = isUnlimited ? 0 : 1;
+    const rateLimitEnabled = isUnlimited ? 0 : (rate_limit_enabled === 'on' || rate_limit_enabled === 'true' ? 1 : 0);
+    const noteEnabled = note_enabled === 'on' || note_enabled === 'true' ? 1 : 0;
+    const noteText = noteEnabled ? (key_note || '') : '';
+    const enabled = api_enabled === 'true' || api_enabled === 1 || api_enabled === '1' ? 1 : 0;
 
-    let query = `UPDATE api_keys SET name=?, allowed_apis=?, key_note=?, unlimited_hits=?, rate_limit_enabled=?, rate_limit_per_day=?, rate_limit_per_hour=?, rate_limit_per_minute=?, status=?, last_updated=?`;
-    let params = [name, allowedApisJson, key_note || '', isUnlimited ? 1 : 0, rateLimitEnabled, parseInt(rate_limit_per_day)||100, parseInt(rate_limit_per_hour)||20, parseInt(rate_limit_per_minute)||5, status, new Date().toISOString()];
+    const updateFields = [];
+    const updateValues = [];
 
-    if (expiry && expiry !== 'keep') {
-        query += `, expires_at=?`;
-        params.push(expires_at);
-    }
+    if (name !== undefined) { updateFields.push('name = ?'); updateValues.push(name); }
+    if (expires_at) { updateFields.push('expires_at = ?'); updateValues.push(expires_at); }
+    if (allowedApisJson) { updateFields.push('allowed_apis = ?'); updateValues.push(allowedApisJson); }
+    if (noteText !== undefined) { updateFields.push('key_note = ?'); updateValues.push(noteText); }
+    if (noteEnabled !== undefined) { updateFields.push('note_enabled = ?'); updateValues.push(noteEnabled); }
+    if (isUnlimited !== undefined) { updateFields.push('unlimited_hits = ?'); updateValues.push(isUnlimited ? 1 : 0); }
+    if (rateLimitEnabled !== undefined) { updateFields.push('rate_limit_enabled = ?'); updateValues.push(rateLimitEnabled); }
+    if (rate_limit_per_day !== undefined) { updateFields.push('rate_limit_per_day = ?'); updateValues.push(parseInt(rate_limit_per_day) || 100); }
+    if (rate_limit_per_hour !== undefined) { updateFields.push('rate_limit_per_hour = ?'); updateValues.push(parseInt(rate_limit_per_hour) || 20); }
+    if (rate_limit_per_minute !== undefined) { updateFields.push('rate_limit_per_minute = ?'); updateValues.push(parseInt(rate_limit_per_minute) || 5); }
+    if (status !== undefined) { updateFields.push('status = ?'); updateValues.push(status); }
+    if (enabled !== undefined) { updateFields.push('api_enabled = ?'); updateValues.push(enabled); }
+    
+    updateFields.push('last_updated = ?');
+    updateValues.push(new Date().toISOString());
+    updateValues.push(key_id);
 
-    query += ` WHERE id=?`;
-    params.push(key_id);
+    const query = `UPDATE api_keys SET ${updateFields.join(', ')} WHERE id = ?`;
 
-    db.run(query, params, function(err) {
-        if (err) return res.status(500).json({ error: 'Failed to update key' });
+    db.run(query, updateValues, function(err) {
+        if (err) {
+            console.error('❌ Edit key error:', err);
+            return res.status(500).json({ error: 'Failed to update key' });
+        }
         res.json({ success: true });
     });
 });
@@ -456,44 +604,75 @@ app.post('/admin/delete-key', requireAuth, (req, res) => {
     res.redirect('/admin/dashboard');
 });
 
+app.post('/admin/toggle-status', requireAuth, (req, res) => {
+    const { id, status } = req.body;
+    db.run('UPDATE api_keys SET status = ? WHERE id = ?', [status === 'active' ? 'disabled' : 'active', id]);
+    res.redirect('/admin/dashboard');
+});
+
 app.post('/admin/toggle-key-enabled', requireAuth, (req, res) => {
     const { key_id, api_enabled } = req.body;
-    const enabled = api_enabled === 'true' || api_enabled === true || api_enabled === 1 ? 1 : 0;
     
-    db.run('UPDATE api_keys SET api_enabled = ?, last_updated = ? WHERE id = ?', 
-        [enabled, new Date().toISOString(), key_id], 
+    if (!key_id) {
+        return res.status(400).json({ error: 'Key ID required' });
+    }
+    
+    const enabled = api_enabled === 'true' || api_enabled === 1 || api_enabled === '1' ? 1 : 0;
+    
+    db.run(
+        'UPDATE api_keys SET api_enabled = ?, last_updated = ? WHERE id = ?',
+        [enabled, new Date().toISOString(), key_id],
         function(err) {
-            if (err) return res.status(500).json({ error: 'Failed' });
-            res.json({ success: true });
+            if (err) {
+                console.error('❌ Error toggling key:', err);
+                return res.status(500).json({ error: 'Failed to toggle key' });
+            }
+            res.json({ 
+                success: true, 
+                api_enabled: enabled,
+                message: enabled ? 'Key enabled' : 'Key disabled'
+            });
         }
     );
 });
 
-app.post('/admin/bulk-key-action', requireAuth, (req, res) => {
-    const { key_ids, action } = req.body;
-    if (!key_ids || !Array.isArray(key_ids)) return res.json({ error: 'Invalid keys' });
-
-    const placeholders = key_ids.map(() => '?').join(',');
-    let sql = '';
-
-    if (action === 'enable') sql = `UPDATE api_keys SET api_enabled = 1, status = 'active' WHERE id IN (${placeholders})`;
-    else if (action === 'disable') sql = `UPDATE api_keys SET api_enabled = 0 WHERE id IN (${placeholders})`;
-    else if (action === 'revoke') sql = `UPDATE api_keys SET status = 'disabled' WHERE id IN (${placeholders})`;
-    else if (action === 'delete') sql = `DELETE FROM api_keys WHERE id IN (${placeholders})`;
-
-    if (sql) {
-        db.run(sql, key_ids, (err) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ success: true });
+app.post('/admin/update-settings', requireAuth, (req, res) => {
+    const { maintenance_message } = req.body;
+    
+    db.run(`UPDATE settings SET maintenance_message = ? WHERE id = 1`, 
+        [maintenance_message || 'API is currently under maintenance.'],
+        function(err) {
+            if (err) {
+                console.error('❌ Error updating settings:', err);
+                return res.status(500).json({ error: 'Failed to update settings' });
+            }
+            res.json({ success: true, maintenance_message: maintenance_message });
         });
-    } else {
-        res.json({ error: 'Unknown action' });
-    }
 });
 
-app.post('/admin/update-settings', requireAuth, (req, res) => {
-    db.run(`UPDATE settings SET maintenance_message = ? WHERE id = 1`, [req.body.maintenance_message || 'API is currently under maintenance.'], () => {
-        res.redirect('/admin/dashboard');
+app.post('/head-admin/update-rate-limit', requireHeadAdmin, (req, res) => {
+    const { key_id, unlimited_hits, rate_limit_enabled, rate_limit_per_day, rate_limit_per_hour, rate_limit_per_minute } = req.body;
+    const isUnlimited = unlimited_hits === 'true';
+    db.run(`UPDATE api_keys SET unlimited_hits = ?, rate_limit_enabled = ?, rate_limit_per_day = ?, rate_limit_per_hour = ?, rate_limit_per_minute = ? WHERE id = ?`,
+            [isUnlimited ? 1 : 0, isUnlimited ? 0 : (rate_limit_enabled === 'true' ? 1 : 0), rate_limit_per_day || 100, rate_limit_per_hour || 20, rate_limit_per_minute || 5, key_id],
+            function(err) { res.json(err ? { error: err.message } : { success: true }); });
+});
+
+app.post('/head-admin/create-admin', requireHeadAdmin, async (req, res) => {
+    const { username, password, role } = req.body;
+    if (!username || !password) return res.json({ error: 'Username and password required' });
+    db.get('SELECT id FROM users WHERE username = ?', [username], async (err, existing) => {
+        if (existing) return res.json({ error: 'Username already exists' });
+        const hashedPassword = await bcrypt.hash(password, 10);
+        db.run(`INSERT INTO users (username, password, role, created_by) VALUES (?, ?, ?, ?)`,
+            [username, hashedPassword, role || 'admin', req.session.user.username],
+            function(err) { res.json(err ? { error: err.message } : { success: true }); });
+    });
+});
+
+app.post('/head-admin/remove-admin', requireHeadAdmin, (req, res) => {
+    db.run('DELETE FROM users WHERE id = ? AND role != "head_admin"', [req.body.admin_id], function(err) {
+        res.json(err ? { error: err.message } : { success: true });
     });
 });
 
@@ -510,7 +689,7 @@ async function handleMistralAI(message) {
     }
 }
 
-// ============ MAIN API ENDPOINT (RATE LIMIT FIX INCLUDED) ============
+// ============ MAIN API ENDPOINT ============
 app.all('/api/:endpoint', globalLimiter, async (req, res) => {
     const userKey = req.query.key || req.body.key;
     const endpoint = req.params.endpoint;
@@ -520,63 +699,85 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
     db.get('SELECT * FROM api_keys WHERE key = ?', [userKey], async (err, keyData) => {
         if (err || !keyData) return res.json({ error: 'Invalid API key', contact: OWNER });
         
+        // Check if the key is enabled
         if (keyData.api_enabled === 0) {
-            return res.json({ success: false, message: 'This API Key has been disabled by the administrator.' });
+            return res.json({
+                success: false,
+                message: 'This API Key has been disabled by the administrator.'
+            });
         }
         
+        // Check if key is active
         if (keyData.status !== 'active') {
-            return res.json({ error: `Key is ${keyData.status}`, contact: OWNER });
+            return res.json({ 
+                error: `Key is ${keyData.status}`, 
+                contact: OWNER 
+            });
         }
         
-        // Allowed API Check
+        // ✅ Check if key has access to this endpoint (SINGLE API CHECK)
         try {
             const allowedApis = JSON.parse(keyData.allowed_apis || '["all"]');
             if (!allowedApis.includes('all') && !allowedApis.includes(endpoint)) {
-                return res.json({ success: false, error: `API endpoint "${endpoint}" is not permitted for this key.` });
+                return res.json({
+                    success: false,
+                    error: `API endpoint "${endpoint}" not allowed for this key. Contact ${OWNER}`
+                });
             }
-        } catch(e) {}
+        } catch(e) {
+            // If parsing fails, allow all
+        }
         
-        // Expiration Check
+        // Check expiration
         if (keyData.expires_at && new Date(keyData.expires_at) < new Date()) {
             db.run('UPDATE api_keys SET status = "expired" WHERE id = ?', [keyData.id]);
             return res.json({ error: 'Key expired', contact: OWNER });
         }
         
-        // --- WORKING RATE LIMIT LOGIC ---
+        // Update hits
+        db.run('UPDATE api_keys SET hits = hits + 1 WHERE id = ?', [keyData.id]);
+        
+        // Rate limiting checks (if enabled)
         if (keyData.rate_limit_enabled === 1 && keyData.unlimited_hits !== 1) {
-            const now = new Date();
-            const today = now.toISOString().split('T')[0];
-            const hour = now.getHours();
-            const minute = now.getMinutes();
-
-            // 1. Daily Limit Check
+            const today = new Date().toISOString().split('T')[0];
+            const hour = new Date().getHours();
+            const minute = Math.floor(new Date().getMinutes() / 5) * 5;
+            
+            // Check daily limit
             const dailyLimit = keyData.rate_limit_per_day || 100;
             const dailyCount = await new Promise((resolve) => {
-                db.get('SELECT SUM(requests) as total FROM rate_limit_tracking WHERE api_key = ? AND date = ?', [userKey, today], (err, row) => resolve(row ? row.total || 0 : 0));
+                db.get(
+                    'SELECT requests FROM rate_limit_tracking WHERE api_key = ? AND date = ?', 
+                    [userKey, today], 
+                    (err, row) => resolve(row ? row.requests : 0)
+                );
             });
+            
             if (dailyCount >= dailyLimit) {
-                return res.json({ error: `Daily rate limit exceeded (${dailyLimit} requests/day max)`, contact: OWNER });
+                return res.json({ 
+                    error: `Daily rate limit exceeded (${dailyLimit} requests/day)`,
+                    contact: OWNER
+                });
             }
-
-            // 2. Hourly Limit Check
+            
+            // Check hourly limit
             const hourlyLimit = keyData.rate_limit_per_hour || 20;
             const hourlyCount = await new Promise((resolve) => {
-                db.get('SELECT SUM(requests) as total FROM rate_limit_tracking WHERE api_key = ? AND date = ? AND hour = ?', [userKey, today, hour], (err, row) => resolve(row ? row.total || 0 : 0));
+                db.get(
+                    'SELECT SUM(requests) as total FROM rate_limit_tracking WHERE api_key = ? AND date = ? AND hour = ?',
+                    [userKey, today, hour],
+                    (err, row) => resolve(row ? row.total || 0 : 0)
+                );
             });
+            
             if (hourlyCount >= hourlyLimit) {
-                return res.json({ error: `Hourly rate limit exceeded (${hourlyLimit} requests/hour max)`, contact: OWNER });
+                return res.json({ 
+                    error: `Hourly rate limit exceeded (${hourlyLimit} requests/hour)`,
+                    contact: OWNER
+                });
             }
-
-            // 3. Per-Minute Limit Check
-            const minuteLimit = keyData.rate_limit_per_minute || 5;
-            const minuteCount = await new Promise((resolve) => {
-                db.get('SELECT requests FROM rate_limit_tracking WHERE api_key = ? AND date = ? AND hour = ? AND minute = ?', [userKey, today, hour, minute], (err, row) => resolve(row ? row.requests || 0 : 0));
-            });
-            if (minuteCount >= minuteLimit) {
-                return res.json({ error: `Per-minute rate limit exceeded (${minuteLimit} requests/min max)`, contact: OWNER });
-            }
-
-            // Record request
+            
+            // Track this request
             db.run(
                 `INSERT INTO rate_limit_tracking (api_key, date, hour, minute, requests) 
                  VALUES (?, ?, ?, ?, 1) 
@@ -585,15 +786,18 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
                 [userKey, today, hour, minute]
             );
         }
-
-        // Increment Hits
-        db.run('UPDATE api_keys SET hits = hits + 1 WHERE id = ?', [keyData.id]);
         
         if (endpoint === 'mistral') {
             const message = req.query.message || req.body.message;
             if (!message) return res.json({ error: 'Message required' });
             const result = await handleMistralAI(message);
             const response = cleanResponseData(result);
+            // Add key metadata
+            response.expires_at = keyData.expires_at;
+            response.unlimited = keyData.unlimited_hits === 1;
+            if (keyData.note_enabled === 1 && keyData.key_note) {
+                response.key_note = keyData.key_note;
+            }
             return res.json(response);
         }
         
@@ -604,6 +808,14 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
             const targetUrl = proxyFn({ ...req.query, ...req.body });
             const response = await axios.get(targetUrl, { timeout: 30000 });
             let cleanedData = cleanResponseData(response.data);
+            
+            // Add key metadata
+            cleanedData.expires_at = keyData.expires_at;
+            cleanedData.unlimited = keyData.unlimited_hits === 1;
+            if (keyData.note_enabled === 1 && keyData.key_note) {
+                cleanedData.key_note = keyData.key_note;
+            }
+            
             res.json(cleanedData);
         } catch (error) {
             res.json({ error: 'API request failed', details: error.message, contact: OWNER });
@@ -611,18 +823,38 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
     });
 });
 
+// ============ API INFO ============
+app.get('/api-info', (req, res) => {
+    db.all('SELECT name, display_name, endpoint, required_params, description FROM available_apis WHERE is_active = 1', [], (err, apis) => {
+        res.json({ owner: OWNER, channel: CHANNEL, total_apis: (apis || []).length, apis: apis || [] });
+    });
+});
+
 app.get('/health', (req, res) => { res.json({ status: 'ok', timestamp: new Date().toISOString() }); });
 
+app.use((err, req, res, next) => { 
+    console.error('Server error:', err);
+    res.status(500).json({ error: 'Internal Server Error', message: err.message }); 
+});
+
+// ============ CRON JOBS ============
 cron.schedule('0 0 * * *', () => {
     db.run(`UPDATE api_keys SET status = 'expired' WHERE expires_at IS NOT NULL AND datetime(expires_at) < datetime('now')`);
-    const sevenDaysAgo = new Date(); 
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     db.run(`DELETE FROM rate_limit_tracking WHERE date < ?`, [sevenDaysAgo.toISOString().split('T')[0]]);
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 Server listening on http://localhost:${PORT}`);
+    console.log('\n🚀 OSINT API HUB RUNNING');
+    console.log(`📍 http://localhost:${PORT}`);
+    console.log('👑 Head Admin: main / sahil');
+    console.log('🔐 Admin: sahil / sexy');
+    console.log(`✅ Owner: ${OWNER}`);
+    console.log(`✅ Channel: ${CHANNEL}`);
+    console.log('✅ SINGLE API SELECT WORKING!');
+    console.log('✅ @raxusss removed from response!');
+    console.log('=====================================\n');
 });
 
 module.exports = app;
