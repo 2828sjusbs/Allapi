@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics — OSINT API Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    body{background:#080c14;font-family:'Plus Jakarta Sans',sans-serif;color:#f3f4f6;}
+    .glass{background:rgba(17,24,39,0.6);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.06);}
+    .cs::-webkit-scrollbar{width:4px;height:4px;}.cs::-webkit-scrollbar-track{background:#080c14;}.cs::-webkit-scrollbar-thumb{background:#1f2937;border-radius:4px;}
+  </style>
+</head>
+<body class="min-h-screen cs">
+<%- include('_nav', { currentPage: 'analytics', user: user }) %>
+<main class="pt-20 max-w-[1400px] mx-auto px-4 sm:px-6 pb-12">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <div><h1 class="text-2xl font-extrabold text-white">Analytics</h1><p class="text-sm text-gray-500 mt-0.5">Request volume, endpoint performance & traffic sources</p></div>
+    <span class="text-xs font-mono text-gray-600 bg-gray-900 border border-gray-800 px-3 py-1.5 rounded-xl"><i class="fa-solid fa-clock mr-1.5"></i>Live data</span>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="glass rounded-2xl p-5"><div class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Total Requests</div><div class="text-3xl font-extrabold text-cyan-400 font-mono"><%= totals.total||0 %></div><div class="text-xs text-gray-600 mt-1">All time</div></div>
+    <div class="glass rounded-2xl p-5"><div class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Unique IPs</div><div class="text-3xl font-extrabold text-indigo-400 font-mono"><%= totals.unique_ips||0 %></div><div class="text-xs text-gray-600 mt-1">Distinct callers</div></div>
+    <div class="glass rounded-2xl p-5"><div class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Endpoints Hit</div><div class="text-3xl font-extrabold text-purple-400 font-mono"><%= totals.unique_endpoints||0 %></div><div class="text-xs text-gray-600 mt-1">Distinct routes</div></div>
+    <div class="glass rounded-2xl p-5"><div class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Top Endpoint</div><div class="text-lg font-extrabold text-emerald-400 font-mono truncate"><%= topEndpoints.length>0?topEndpoints[0].endpoint:'—' %></div><div class="text-xs text-gray-600 mt-1"><%= topEndpoints.length>0?topEndpoints[0].total+' hits':'No data' %></div></div>
+  </div>
+
+  <!-- Charts row 1 -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+    <div class="glass rounded-2xl p-6"><h3 class="text-sm font-bold text-white mb-1">Daily Request Volume</h3><p class="text-xs text-gray-500 mb-4">Last 14 days</p><div style="height:220px"><canvas id="dailyVolumeChart"></canvas></div></div>
+    <div class="glass rounded-2xl p-6"><h3 class="text-sm font-bold text-white mb-1">Hourly Distribution</h3><p class="text-xs text-gray-500 mb-4">Last 7 days — peak hours</p><div style="height:220px"><canvas id="hourlyChart"></canvas></div></div>
+  </div>
+
+  <!-- Charts row 2 -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+    <div class="glass rounded-2xl p-6"><h3 class="text-sm font-bold text-white mb-1">Top Endpoints</h3><p class="text-xs text-gray-500 mb-4">By total hit count</p><div style="height:220px"><canvas id="topEndpointsChart"></canvas></div></div>
+    <div class="glass rounded-2xl p-6"><h3 class="text-sm font-bold text-white mb-1">Endpoint Share</h3><p class="text-xs text-gray-500 mb-4">Proportion of traffic</p><div style="height:220px" class="flex items-center justify-center"><canvas id="doughnutChart"></canvas></div></div>
+  </div>
+
+  <!-- Top IPs + Sources -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+    <div class="glass rounded-2xl overflow-hidden">
+      <div class="p-5 border-b border-white/5"><h3 class="text-sm font-bold text-white">Top Caller IPs</h3><p class="text-xs text-gray-500 mt-0.5">Highest request volume</p></div>
+      <div class="divide-y divide-white/[0.04]">
+        <%if(topIPs&&topIPs.length>0){topIPs.slice(0,8).forEach(function(row,i){%>
+        <div class="flex items-center justify-between px-5 py-3">
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-[10px] font-bold text-gray-400"><%=i+1%></span>
+            <span class="font-mono text-xs text-cyan-300"><%=row.ip_address%></span>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-24 h-1.5 rounded-full bg-gray-800 overflow-hidden"><div class="h-full rounded-full bg-cyan-500/60" style="width:<%=Math.round((row.hits/topIPs[0].hits)*100)%>%"></div></div>
+            <span class="text-xs font-mono text-gray-400 w-12 text-right"><%=row.hits%></span>
+          </div>
+        </div>
+        <%})}else{%><div class="px-5 py-10 text-center text-xs text-gray-600">No IP data yet</div><%}%>
+      </div>
+    </div>
+    <div class="glass rounded-2xl overflow-hidden">
+      <div class="p-5 border-b border-white/5"><h3 class="text-sm font-bold text-white">Request Sources</h3><p class="text-xs text-gray-500 mt-0.5">IP + endpoint breakdown</p></div>
+      <div class="overflow-y-auto cs" style="max-height:320px">
+        <%if(requestSources&&requestSources.length>0){requestSources.slice(0,10).forEach(function(row){%>
+        <div class="flex items-center justify-between px-5 py-3 border-b border-white/[0.03]">
+          <div><div class="text-xs font-mono text-gray-300"><%=row.ip_address%></div><div class="text-[10px] text-gray-600 mt-0.5"><span class="text-indigo-400">/<%=row.endpoint%></span></div></div>
+          <span class="text-xs font-mono text-gray-500 bg-gray-800 px-2 py-0.5 rounded"><%=row.hits%>x</span>
+        </div>
+        <%})}else{%><div class="px-5 py-10 text-center text-xs text-gray-600">No source data yet</div><%}%>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent requests -->
+  <div class="glass rounded-2xl overflow-hidden">
+    <div class="p-5 border-b border-white/5 flex items-center justify-between">
+      <div><h3 class="text-sm font-bold text-white">Recent Requests</h3><p class="text-xs text-gray-500 mt-0.5">Last 50 API calls</p></div>
+      <a href="/admin/analytics" onclick="location.reload()" class="text-xs text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1.5"><i class="fa-solid fa-rotate-right text-[10px]"></i> Refresh</a>
+    </div>
+    <div class="overflow-x-auto cs">
+      <table class="w-full text-left text-xs">
+        <thead class="text-[10px] font-mono uppercase tracking-wider text-gray-600 border-b border-white/5 bg-gray-900/30">
+          <tr><th class="py-3 px-4">Endpoint</th><th class="py-3 px-4">API Key</th><th class="py-3 px-4">IP Address</th><th class="py-3 px-4">Status</th><th class="py-3 px-4">Date</th></tr>
+        </thead>
+        <tbody class="divide-y divide-white/[0.03]">
+          <%if(recentRequests&&recentRequests.length>0){recentRequests.forEach(function(r){%>
+          <tr class="hover:bg-white/[0.02] transition">
+            <td class="py-2.5 px-4 font-mono text-indigo-400">/<%=r.endpoint%></td>
+            <td class="py-2.5 px-4 font-mono text-gray-500 text-[11px]"><%=r.api_key?r.api_key.substring(0,12)+'...':'—'%></td>
+            <td class="py-2.5 px-4 font-mono text-cyan-400/80"><%=r.ip_address%></td>
+            <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold <%=r.status_code===200?'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20':'bg-red-500/10 text-red-400 border border-red-500/20'%>"><%=r.status_code%></span></td>
+            <td class="py-2.5 px-4 text-gray-600 font-mono text-[10px]"><%=r.date%></td>
+          </tr>
+          <%})}else{%><tr><td colspan="5" class="py-12 text-center text-gray-600">No requests logged yet</td></tr><%}%>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+<script>
+const COLORS=['#06b6d4','#6366f1','#10b981','#f59e0b','#ef4444','#a855f7','#ec4899','#14b8a6','#3b82f6','#f97316'];
+const dailyData=<%- JSON.stringify(dailyVolume||[]) %>;
+const hourlyData=<%- JSON.stringify(hourlyDist||[]) %>;
+const epData=<%- JSON.stringify(topEndpoints||[]) %>;
+
+new Chart(document.getElementById('dailyVolumeChart'),{type:'line',data:{labels:dailyData.map(d=>d.date),datasets:[{label:'Requests',data:dailyData.map(d=>d.total),borderColor:'#06b6d4',backgroundColor:'rgba(6,182,212,0.07)',tension:0.4,fill:true,pointRadius:4,pointBackgroundColor:'#06b6d4',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7280',font:{size:10}},grid:{color:'rgba(255,255,255,0.03)'}},y:{ticks:{color:'#6b7280',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+
+const allHours=Array.from({length:24},(_,i)=>String(i).padStart(2,'0'));
+const hourMap={};hourlyData.forEach(h=>{hourMap[h.hour]=h.hits;});
+new Chart(document.getElementById('hourlyChart'),{type:'bar',data:{labels:allHours.map(h=>h+':00'),datasets:[{label:'Hits',data:allHours.map(h=>hourMap[h]||0),backgroundColor:'rgba(99,102,241,0.6)',borderRadius:4,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7280',font:{size:9},maxRotation:0},grid:{color:'rgba(255,255,255,0.02)'}},y:{ticks:{color:'#6b7280',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+
+new Chart(document.getElementById('topEndpointsChart'),{type:'bar',data:{labels:epData.map(d=>d.endpoint),datasets:[{label:'Hits',data:epData.map(d=>d.total),backgroundColor:COLORS.slice(0,epData.length),borderRadius:6,borderWidth:0}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7280',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#9ca3af',font:{size:10}},grid:{display:false}}}}});
+
+new Chart(document.getElementById('doughnutChart'),{type:'doughnut',data:{labels:epData.map(d=>d.endpoint),datasets:[{data:epData.map(d=>d.total),backgroundColor:COLORS.slice(0,epData.length),borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:'#9ca3af',font:{size:10},boxWidth:10,padding:8}}},cutout:'65%'}});
+</script>
+</body>
+</html>
