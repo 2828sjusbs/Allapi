@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login History — OSINT API Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    body{background:#080c14;font-family:'Plus Jakarta Sans',sans-serif;color:#f3f4f6;}
+    .glass{background:rgba(17,24,39,0.6);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.06);}
+    .cs::-webkit-scrollbar{width:4px;}.cs::-webkit-scrollbar-track{background:#080c14;}.cs::-webkit-scrollbar-thumb{background:#1f2937;border-radius:4px;}
+  </style>
+</head>
+<body class="min-h-screen cs">
+<%- include('_nav', { currentPage: 'login-history', user: user }) %>
+<main class="pt-20 max-w-[1400px] mx-auto px-4 sm:px-6 pb-12">
+  <div class="mb-8"><h1 class="text-2xl font-extrabold text-white">Login History</h1><p class="text-sm text-gray-500 mt-0.5">Admin access log — last 100 entries</p></div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="glass rounded-2xl p-5"><div class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Total Records</div><div class="text-3xl font-extrabold text-white font-mono"><%=logs.length%></div></div>
+    <div class="glass rounded-2xl p-5"><div class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Successful</div><div class="text-3xl font-extrabold text-emerald-400 font-mono"><%=successCount%></div></div>
+    <div class="glass rounded-2xl p-5"><div class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Failed</div><div class="text-3xl font-extrabold text-red-400 font-mono"><%=failCount%></div></div>
+    <div class="glass rounded-2xl p-5"><div class="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Top Fail IP</div><div class="text-base font-extrabold text-amber-400 font-mono truncate"><%=topFailedIPs&&topFailedIPs.length>0?topFailedIPs[0].ip_address:'—'%></div><div class="text-xs text-gray-600 mt-1"><%=topFailedIPs&&topFailedIPs.length>0?topFailedIPs[0].attempts+' attempts':'No fails'%></div></div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
+    <div class="glass rounded-2xl p-6"><h3 class="text-sm font-bold text-white mb-1">Outcome Distribution</h3><p class="text-xs text-gray-500 mb-4">Success vs failures</p><div style="height:200px" class="flex items-center justify-center"><canvas id="outcomeChart"></canvas></div></div>
+    <div class="glass rounded-2xl overflow-hidden">
+      <div class="p-5 border-b border-white/5"><h3 class="text-sm font-bold text-white">Suspicious IPs</h3><p class="text-xs text-gray-500 mt-0.5">Most failed login attempts</p></div>
+      <div class="divide-y divide-white/[0.04]">
+        <%if(topFailedIPs&&topFailedIPs.length>0){topFailedIPs.forEach(function(row,i){%>
+        <div class="flex items-center justify-between px-5 py-3">
+          <div class="flex items-center gap-3">
+            <span class="w-5 h-5 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-[9px] font-bold text-red-400"><%=i+1%></span>
+            <span class="font-mono text-xs text-gray-300"><%=row.ip_address%></span>
+          </div>
+          <span class="text-xs font-mono text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full"><%=row.attempts%> fails</span>
+        </div>
+        <%})}else{%><div class="px-5 py-8 text-center text-xs text-gray-600">No failed attempts</div><%}%>
+      </div>
+    </div>
+  </div>
+
+  <div class="glass rounded-2xl overflow-hidden">
+    <div class="p-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div><h3 class="text-sm font-bold text-white">Access Log</h3><p class="text-xs text-gray-500 mt-0.5">Full login event history</p></div>
+      <div class="flex items-center gap-3">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 text-xs"></i>
+          <input type="text" id="logSearch" onkeyup="filterLogs()" placeholder="Search username, IP..." class="bg-[#0d1420] border border-gray-800 rounded-xl pl-8 pr-4 py-2 text-xs text-gray-300 placeholder-gray-600 outline-none focus:border-cyan-500/40 transition w-full sm:w-56">
+        </div>
+        <select id="statusFilter" onchange="filterLogs()" class="bg-[#0d1420] border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-300 outline-none">
+          <option value="">All</option><option value="success">Success</option><option value="failed">Failed</option>
+        </select>
+      </div>
+    </div>
+    <div class="overflow-x-auto cs">
+      <table class="w-full text-left text-xs" id="logTable">
+        <thead class="text-[10px] font-mono uppercase tracking-wider text-gray-600 border-b border-white/5 bg-gray-900/30">
+          <tr><th class="py-3 px-4">Status</th><th class="py-3 px-4">Username</th><th class="py-3 px-4">Role</th><th class="py-3 px-4">IP Address</th><th class="py-3 px-4">User Agent</th><th class="py-3 px-4">Time</th></tr>
+        </thead>
+        <tbody class="divide-y divide-white/[0.03]">
+          <%if(logs&&logs.length>0){logs.forEach(function(log){%>
+          <tr class="hover:bg-white/[0.02] transition log-row" data-status="<%=log.status%>" data-username="<%=log.username||''%>" data-ip="<%=log.ip_address||''%>">
+            <td class="py-2.5 px-4">
+              <%if(log.status==='success'){%>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1"><i class="fa-solid fa-check text-[8px]"></i> Success</span>
+              <%}else{%>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 inline-flex items-center gap-1"><i class="fa-solid fa-xmark text-[8px]"></i><%=log.status==='failed_wrong_pass'?'Wrong Pass':log.status==='failed_missing'?'Missing':'Failed'%></span>
+              <%}%>
+            </td>
+            <td class="py-2.5 px-4 font-mono text-gray-300"><%=log.username||'—'%></td>
+            <td class="py-2.5 px-4">
+              <%if(log.role&&log.role!=='unknown'){%><span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono uppercase"><%=log.role%></span><%}else{%><span class="text-gray-700">—</span><%}%>
+            </td>
+            <td class="py-2.5 px-4 font-mono text-cyan-400/80 text-[11px]"><%=log.ip_address||'—'%></td>
+            <td class="py-2.5 px-4 text-gray-600 text-[10px] max-w-[180px] truncate"><%=log.user_agent?log.user_agent.substring(0,40)+(log.user_agent.length>40?'…':''):'—'%></td>
+            <td class="py-2.5 px-4 font-mono text-gray-500 text-[11px]">
+              <%if(log.created_at){const d=new Date(log.created_at);%><%=d.toLocaleDateString()%> <span class="text-gray-700"><%=d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})%></span><%}else{%>—<%}%>
+            </td>
+          </tr>
+          <%})}else{%><tr><td colspan="6" class="py-12 text-center text-gray-600">No login events recorded yet</td></tr><%}%>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+<script>
+new Chart(document.getElementById('outcomeChart'),{type:'doughnut',data:{labels:['Success','Failed'],datasets:[{data:[<%=successCount%>,<%=failCount%>],backgroundColor:['rgba(16,185,129,0.7)','rgba(239,68,68,0.7)'],borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'bottom',labels:{color:'#9ca3af',font:{size:11},padding:16,boxWidth:12}}},cutout:'60%'}});
+
+function filterLogs(){
+  const search=document.getElementById('logSearch').value.toLowerCase();
+  const sf=document.getElementById('statusFilter').value;
+  document.querySelectorAll('.log-row').forEach(row=>{
+    const matchSearch=!search||row.dataset.username.toLowerCase().includes(search)||row.dataset.ip.toLowerCase().includes(search);
+    const matchStatus=!sf||(sf==='failed'?row.dataset.status.startsWith('failed'):row.dataset.status===sf);
+    row.style.display=(matchSearch&&matchStatus)?'':'none';
+  });
+}
+</script>
+</body>
+</html>
