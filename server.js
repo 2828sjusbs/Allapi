@@ -37,7 +37,9 @@ db.serialize(() => {
         role TEXT,
         created_by TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
+    )`, (err) => {
+        if (err) console.error('Error creating users table:', err);
+    });
 
     // API Keys table
     db.run(`CREATE TABLE IF NOT EXISTS api_keys (
@@ -60,7 +62,9 @@ db.serialize(() => {
         note_enabled INTEGER DEFAULT 0,
         last_updated DATETIME,
         api_enabled INTEGER DEFAULT 1
-    )`);
+    )`, (err) => {
+        if (err) console.error('Error creating api_keys table:', err);
+    });
 
     // Rate limit tracking
     db.run(`CREATE TABLE IF NOT EXISTS rate_limit_tracking (
@@ -70,7 +74,9 @@ db.serialize(() => {
         minute_timestamp INTEGER,
         requests INTEGER DEFAULT 0,
         UNIQUE(api_key, date, minute_timestamp)
-    )`);
+    )`, (err) => {
+        if (err) console.error('Error creating rate_limit_tracking table:', err);
+    });
 
     // Analytics
     db.run(`CREATE TABLE IF NOT EXISTS analytics (
@@ -80,7 +86,9 @@ db.serialize(() => {
         status_code INTEGER,
         ip_address TEXT,
         date DATE DEFAULT CURRENT_DATE
-    )`);
+    )`, (err) => {
+        if (err) console.error('Error creating analytics table:', err);
+    });
 
     // Daily calls tracking
     db.run(`CREATE TABLE IF NOT EXISTS daily_calls (
@@ -89,7 +97,9 @@ db.serialize(() => {
         date TEXT,
         calls INTEGER DEFAULT 0,
         UNIQUE(api_key, date)
-    )`);
+    )`, (err) => {
+        if (err) console.error('Error creating daily_calls table:', err);
+    });
 
     // Available APIs Table (with custom_message column)
     db.run(`CREATE TABLE IF NOT EXISTS available_apis (
@@ -102,9 +112,11 @@ db.serialize(() => {
         description TEXT,
         is_active INTEGER DEFAULT 1,
         custom_message TEXT DEFAULT 'API is currently turned off.'
-    )`);
+    )`, (err) => {
+        if (err) console.error('Error creating available_apis table:', err);
+    });
 
-    // Auto-migrate schema: Add custom_message column if missing in existing DB
+    // Auto-migrate schema: Add custom_message column if missing
     db.run(`ALTER TABLE available_apis ADD COLUMN custom_message TEXT DEFAULT 'API is currently turned off.'`, (err) => {
         // Ignore error if column already exists
     });
@@ -113,32 +125,58 @@ db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS settings (
         id INTEGER PRIMARY KEY,
         maintenance_message TEXT DEFAULT 'API is currently under maintenance.'
-    )`);
+    )`, (err) => {
+        if (err) console.error('Error creating settings table:', err);
+    });
 
     // Insert default settings
     db.get(`SELECT * FROM settings WHERE id = 1`, [], (err, row) => {
+        if (err) {
+            console.error('Error checking settings:', err);
+            return;
+        }
         if (!row) {
-            db.run(`INSERT INTO settings (id, maintenance_message) VALUES (1, 'API is currently under maintenance.')`);
+            db.run(`INSERT INTO settings (id, maintenance_message) VALUES (1, 'API is currently under maintenance.')`, (err) => {
+                if (err) console.error('Error inserting default settings:', err);
+            });
         }
     });
 
     // Default users
     db.get(`SELECT * FROM users WHERE username = 'main'`, [], (err, row) => {
+        if (err) {
+            console.error('Error checking main user:', err);
+            return;
+        }
         if (!row) {
             db.run(`INSERT INTO users (username, password, role, created_by) VALUES (?, ?, ?, ?)`, 
-                ['main', bcrypt.hashSync('sahil', 10), 'head_admin', 'system']);
+                ['main', bcrypt.hashSync('sahil', 10), 'head_admin', 'system'], 
+                (err) => {
+                    if (err) console.error('Error creating main user:', err);
+                });
         }
     });
 
     db.get(`SELECT * FROM users WHERE username = 'sahil'`, [], (err, row) => {
+        if (err) {
+            console.error('Error checking sahil user:', err);
+            return;
+        }
         if (!row) {
             db.run(`INSERT INTO users (username, password, role, created_by) VALUES (?, ?, ?, ?)`, 
-                ['sahil', bcrypt.hashSync('sexy', 10), 'admin', 'main']);
+                ['sahil', bcrypt.hashSync('sexy', 10), 'admin', 'main'],
+                (err) => {
+                    if (err) console.error('Error creating sahil user:', err);
+                });
         }
     });
 
     // Default APIs
     db.get(`SELECT COUNT(*) as count FROM available_apis`, [], (err, row) => {
+        if (err) {
+            console.error('Error checking available_apis:', err);
+            return;
+        }
         if (row && row.count === 0) {
             const apis = [
                 ['leakpro', '🔓 Leak Pro', '/api/leakpro', 'number', '{"number":"919876543210"}', 'LEAK pro information'],
@@ -167,7 +205,9 @@ db.serialize(() => {
             ];
             
             apis.forEach(api => {
-                db.run(`INSERT INTO available_apis (name, display_name, endpoint, required_params, example_params, description, is_active, custom_message) VALUES (?, ?, ?, ?, ?, ?, 1, 'API is currently turned off.')`, api);
+                db.run(`INSERT INTO available_apis (name, display_name, endpoint, required_params, example_params, description, is_active, custom_message) VALUES (?, ?, ?, ?, ?, ?, 1, 'API is currently turned off.')`, api, (err) => {
+                    if (err) console.error('Error inserting default API:', err);
+                });
             });
         }
     });
@@ -195,7 +235,9 @@ const globalLimiter = rateLimit({
 });
 
 function requireAuth(req, res, next) {
-    if (!req.session.user) return res.redirect('/login');
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
     next();
 }
 
@@ -205,6 +247,15 @@ function requireHeadAdmin(req, res, next) {
     }
     next();
 }
+
+// ============ ERROR HANDLING MIDDLEWARE ============
+app.use((err, req, res, next) => {
+    console.error('Error:', err);
+    res.status(500).json({ 
+        error: 'Internal Server Error', 
+        message: err.message 
+    });
+});
 
 // ============ HELPER FUNCTION FOR FLEXIBLE PARAMETER EXTRACTION ============
 const getParam = (p, ...keys) => {
@@ -294,8 +345,20 @@ function cleanResponseData(data) {
 // ============ PUBLIC ROUTES ============
 app.get('/', (req, res) => {
     db.get('SELECT COUNT(*) as total_apis FROM available_apis', [], (err, apisCount) => {
+        if (err) {
+            console.error('Error counting APIs:', err);
+            return res.status(500).send('Database error');
+        }
         db.get('SELECT COUNT(*) as total_keys FROM api_keys', [], (err, keysCount) => {
+            if (err) {
+                console.error('Error counting keys:', err);
+                return res.status(500).send('Database error');
+            }
             db.get('SELECT COALESCE(SUM(hits), 0) as total_hits FROM api_keys', [], (err, hitsTotal) => {
+                if (err) {
+                    console.error('Error counting hits:', err);
+                    return res.status(500).send('Database error');
+                }
                 res.render('index', { 
                     user: req.session.user || null,
                     totalApis: apisCount ? apisCount.total_apis : 0,
@@ -311,6 +374,10 @@ app.get('/', (req, res) => {
 
 app.get('/endpoints', (req, res) => {
     db.all('SELECT * FROM available_apis WHERE is_active = 1', [], (err, apis) => {
+        if (err) {
+            console.error('Error fetching endpoints:', err);
+            return res.status(500).send('Database error');
+        }
         const formattedApis = (apis || []).map(api => {
             let params = {};
             try { params = JSON.parse(api.required_params || '{}'); } catch(e) { params = {}; }
@@ -334,7 +401,10 @@ app.get('/endpoints', (req, res) => {
 
 app.get('/docs', (req, res) => {
     db.all('SELECT * FROM available_apis WHERE is_active = 1', [], (err, apis) => {
-        if (err) return res.status(500).send('Database Error');
+        if (err) {
+            console.error('Error fetching docs:', err);
+            return res.status(500).send('Database Error');
+        }
         const formattedApis = (apis || []).map(api => {
             let params = {};
             try { params = JSON.parse(api.required_params || '{}'); } catch(e) { params = {}; }
@@ -362,35 +432,73 @@ app.get('/docs', (req, res) => {
     });
 });
 
-app.get('/login', (req, res) => { res.render('login', { error: req.query.error || null }); });
+app.get('/login', (req, res) => { 
+    res.render('login', { error: req.query.error || null }); 
+});
 
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
-    if (!username || !password) return res.redirect('/login?error=missing');
+    if (!username || !password) {
+        return res.redirect('/login?error=missing');
+    }
     
     db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
-        if (err || !user) return res.redirect('/login?error=invalid');
-        const match = await bcrypt.compare(password, user.password);
-        if (match) {
-            req.session.user = { id: user.id, username: user.username, role: user.role };
-            return res.redirect(user.role === 'head_admin' ? '/head-admin/dashboard' : '/admin/dashboard');
+        if (err || !user) {
+            return res.redirect('/login?error=invalid');
         }
-        return res.redirect('/login?error=invalid');
+        try {
+            const match = await bcrypt.compare(password, user.password);
+            if (match) {
+                req.session.user = { id: user.id, username: user.username, role: user.role };
+                return res.redirect(user.role === 'head_admin' ? '/head-admin/dashboard' : '/admin/dashboard');
+            }
+            return res.redirect('/login?error=invalid');
+        } catch (error) {
+            console.error('Login error:', error);
+            return res.redirect('/login?error=server');
+        }
     });
 });
 
-app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/'); });
+app.get('/logout', (req, res) => { 
+    req.session.destroy(); 
+    res.redirect('/'); 
+});
 
 // ============ ADMIN DASHBOARD ROUTES ============
 app.get('/admin/dashboard', requireAuth, (req, res) => {
     if (req.session.user.role === 'head_admin') return res.redirect('/head-admin/dashboard');
     
     db.all('SELECT * FROM api_keys ORDER BY created_at DESC', [], (err, keys) => {
+        if (err) {
+            console.error('Error fetching keys:', err);
+            return res.status(500).send('Database error');
+        }
         db.get('SELECT COALESCE(SUM(hits), 0) as total FROM api_keys', [], (err, hits) => {
+            if (err) {
+                console.error('Error fetching hits:', err);
+                return res.status(500).send('Database error');
+            }
             db.get('SELECT COUNT(*) as active FROM api_keys WHERE status="active"', [], (err, active) => {
+                if (err) {
+                    console.error('Error fetching active keys:', err);
+                    return res.status(500).send('Database error');
+                }
                 db.all('SELECT * FROM available_apis', [], (err, apis) => {
+                    if (err) {
+                        console.error('Error fetching APIs:', err);
+                        return res.status(500).send('Database error');
+                    }
                     db.get('SELECT * FROM settings WHERE id = 1', [], (err, settings) => {
+                        if (err) {
+                            console.error('Error fetching settings:', err);
+                            return res.status(500).send('Database error');
+                        }
                         db.all(`SELECT date, SUM(calls) as total_calls FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7`, [], (err, chartRows) => {
+                            if (err) {
+                                console.error('Error fetching chart data:', err);
+                                return res.status(500).send('Database error');
+                            }
                             const chartData = (chartRows || []).reverse();
                             const formattedApis = (apis || []).map(api => {
                                 let params = {};
@@ -485,17 +593,28 @@ app.post('/admin/generate-key', requireAuth, (req, res) => {
                 new Date().toISOString()
             ], 
             function(err) {
-                if (err) return res.status(500).send('Database error: ' + err.message);
+                if (err) {
+                    console.error('Error creating key:', err);
+                    return res.status(500).send('Database error: ' + err.message);
+                }
                 res.redirect('/admin/dashboard');
             });
     }
     
     if (isCustomEnabled && custom_key && custom_key.trim() !== '') {
         let apiKey = custom_key.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '');
-        if (apiKey.length < 3) return res.status(400).send('❌ Custom key must be at least 3 characters');
+        if (apiKey.length < 3) {
+            return res.status(400).send('❌ Custom key must be at least 3 characters');
+        }
         
         db.get('SELECT key FROM api_keys WHERE key = ?', [apiKey], (err, existing) => {
-            if (existing) return res.status(400).send('❌ Key already exists: ' + apiKey);
+            if (err) {
+                console.error('Error checking key existence:', err);
+                return res.status(500).send('Database error');
+            }
+            if (existing) {
+                return res.status(400).send('❌ Key already exists: ' + apiKey);
+            }
             createKey(apiKey, true);
         });
     } else {
@@ -578,22 +697,43 @@ app.post('/admin/edit-key', requireAuth, (req, res) => {
     ];
 
     db.run(query, values, function(err) {
-        if (err) return res.status(500).json({ success: false, error: err.message });
+        if (err) {
+            console.error('Error updating key:', err);
+            return res.status(500).json({ success: false, error: err.message });
+        }
         res.json({ success: true, message: 'Key updated successfully' });
     });
 });
 
 app.post('/admin/delete-key', requireAuth, (req, res) => {
-    db.run('DELETE FROM api_keys WHERE id = ?', [req.body.id], () => res.redirect('/admin/dashboard'));
+    if (!req.body.id) {
+        return res.status(400).send('Key ID required');
+    }
+    db.run('DELETE FROM api_keys WHERE id = ?', [req.body.id], function(err) {
+        if (err) {
+            console.error('Error deleting key:', err);
+            return res.status(500).send('Database error');
+        }
+        res.redirect('/admin/dashboard');
+    });
 });
 
 app.post('/admin/toggle-key-enabled', requireAuth, (req, res) => {
     const { key_id, api_enabled } = req.body;
+    if (!key_id) {
+        return res.status(400).json({ success: false, error: 'Key ID required' });
+    }
     const enabled = api_enabled === true || api_enabled === 'true' || api_enabled === 1 || api_enabled === '1' ? 1 : 0;
     
     db.run('UPDATE api_keys SET api_enabled = ?, last_updated = ? WHERE id = ?',
         [enabled, new Date().toISOString(), key_id],
-        (err) => res.json({ success: !err })
+        function(err) {
+            if (err) {
+                console.error('Error toggling key:', err);
+                return res.status(500).json({ success: false, error: err.message });
+            }
+            res.json({ success: true });
+        }
     );
 });
 
@@ -613,67 +753,120 @@ app.post('/admin/bulk-key-action', requireAuth, (req, res) => {
     else return res.status(400).json({ success: false, error: 'Invalid action' });
 
     db.run(sql, key_ids, function(err) {
-        if (err) return res.status(500).json({ success: false, error: err.message });
+        if (err) {
+            console.error('Error performing bulk action:', err);
+            return res.status(500).json({ success: false, error: err.message });
+        }
         res.json({ success: true });
     });
 });
 
 app.post('/admin/toggle-api', requireAuth, (req, res) => {
     const { api_id, is_active } = req.body;
+    if (!api_id) {
+        return res.status(400).json({ error: 'API ID required' });
+    }
     db.run('UPDATE available_apis SET is_active = ? WHERE id = ?', [is_active ? 1 : 0, api_id], function(err) {
-        res.json(err ? { error: err.message } : { success: true });
+        if (err) {
+            console.error('Error toggling API:', err);
+            return res.status(500).json({ error: err.message });
+        }
+        res.json({ success: true });
     });
 });
 
 // Update API Status & Custom Response Message
 app.post('/admin/update-api-status', requireAuth, (req, res) => {
     const { api_id, is_active, custom_message } = req.body;
+    if (!api_id) {
+        return res.status(400).json({ error: 'API ID required' });
+    }
     db.run('UPDATE available_apis SET is_active = ?, custom_message = ? WHERE id = ?', 
         [is_active ? 1 : 0, custom_message || 'API is currently turned off.', api_id], 
         function(err) {
-            res.json(err ? { error: err.message } : { success: true });
+            if (err) {
+                console.error('Error updating API status:', err);
+                return res.status(500).json({ error: err.message });
+            }
+            res.json({ success: true });
         }
     );
 });
 
 app.post('/admin/update-api-name', requireAuth, (req, res) => {
     const { api_id, display_name } = req.body;
+    if (!api_id || !display_name) {
+        return res.status(400).json({ error: 'API ID and display name required' });
+    }
     db.run('UPDATE available_apis SET display_name = ? WHERE id = ?', [display_name, api_id], function(err) {
-        res.json(err ? { error: err.message } : { success: true });
+        if (err) {
+            console.error('Error updating API name:', err);
+            return res.status(500).json({ error: err.message });
+        }
+        res.json({ success: true });
     });
 });
 
 app.post('/admin/update-settings', requireAuth, (req, res) => {
     const { maintenance_message } = req.body;
+    if (!maintenance_message) {
+        return res.status(400).send('Maintenance message required');
+    }
     db.run(`UPDATE settings SET maintenance_message = ? WHERE id = 1`, 
-        [maintenance_message || 'API is currently under maintenance.'],
-        () => res.redirect('/admin/dashboard')
+        [maintenance_message],
+        function(err) {
+            if (err) {
+                console.error('Error updating settings:', err);
+                return res.status(500).send('Database error');
+            }
+            res.redirect('/admin/dashboard');
+        }
     );
 });
 
 // ============ MAIN API ENDPOINT WITH FLEXIBLE PARAMS ============
 app.all('/api/:endpoint', globalLimiter, async (req, res) => {
-    const userKey = req.query.key || req.body.key;
-    const endpoint = req.params.endpoint;
-    
-    if (!userKey) return res.status(401).json({ error: 'API key required', contact: OWNER });
+    try {
+        const userKey = req.query.key || req.body.key;
+        const endpoint = req.params.endpoint;
+        
+        if (!userKey) {
+            return res.status(401).json({ error: 'API key required', contact: OWNER });
+        }
 
-    // Check Global API Status (On/Off) and Custom Message
-    const targetApi = await new Promise((resolve) => {
-        db.get('SELECT * FROM available_apis WHERE name = ? OR endpoint = ?', [endpoint, `/api/${endpoint}`], (err, row) => {
-            resolve(row || null);
+        // Check Global API Status (On/Off) and Custom Message
+        const targetApi = await new Promise((resolve) => {
+            db.get('SELECT * FROM available_apis WHERE name = ? OR endpoint = ?', [endpoint, `/api/${endpoint}`], (err, row) => {
+                if (err) {
+                    console.error('Error fetching API:', err);
+                    resolve(null);
+                } else {
+                    resolve(row || null);
+                }
+            });
         });
-    });
 
-    if (targetApi && targetApi.is_active === 0) {
-        return res.status(200).json({
-            status: false,
-            message: targetApi.custom_message || 'This API is currently turned off by administrator.'
+        if (targetApi && targetApi.is_active === 0) {
+            return res.status(200).json({
+                status: false,
+                message: targetApi.custom_message || 'This API is currently turned off by administrator.'
+            });
+        }
+
+        const keyData = await new Promise((resolve) => {
+            db.get('SELECT * FROM api_keys WHERE key = ?', [userKey], (err, row) => {
+                if (err) {
+                    console.error('Error fetching key:', err);
+                    resolve(null);
+                } else {
+                    resolve(row || null);
+                }
+            });
         });
-    }
 
-    db.get('SELECT * FROM api_keys WHERE key = ?', [userKey], async (err, keyData) => {
-        if (err || !keyData) return res.status(403).json({ error: 'Invalid API key', contact: OWNER });
+        if (!keyData) {
+            return res.status(403).json({ error: 'Invalid API key', contact: OWNER });
+        }
         
         if (keyData.api_enabled === 0) {
             return res.status(403).json({ success: false, message: 'This API Key has been disabled by administrator.' });
@@ -683,13 +876,15 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
             return res.status(403).json({ error: `Key status is ${keyData.status}`, contact: OWNER });
         }
         
-        // Allowed API Permission check (Select All vs Single/Specific Select)
+        // Allowed API Permission check
         try {
             const allowedApis = JSON.parse(keyData.allowed_apis || '["all"]');
             if (!allowedApis.includes('all') && !allowedApis.includes(endpoint)) {
                 return res.status(403).json({ success: false, error: `API endpoint "${endpoint}" is not allowed for this key.` });
             }
-        } catch(e) {}
+        } catch(e) {
+            console.error('Error parsing allowed APIs:', e);
+        }
         
         // Expiry check
         if (keyData.expires_at && new Date(keyData.expires_at) < new Date()) {
@@ -713,7 +908,14 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
                 db.get(
                     'SELECT SUM(requests) as total FROM rate_limit_tracking WHERE api_key = ? AND date = ?',
                     [userKey, today],
-                    (err, row) => resolve(row ? (row.total || 0) : 0)
+                    (err, row) => {
+                        if (err) {
+                            console.error('Error getting daily count:', err);
+                            resolve(0);
+                        } else {
+                            resolve(row ? (row.total || 0) : 0);
+                        }
+                    }
                 );
             });
 
@@ -726,14 +928,21 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
                 });
             }
 
-            // 2. Per Minute Check (Skip if perMinuteLimit === 0)
+            // 2. Per Minute Check
             let minuteCount = 0;
             if (perMinuteLimit > 0) {
                 minuteCount = await new Promise((resolve) => {
                     db.get(
                         'SELECT requests FROM rate_limit_tracking WHERE api_key = ? AND minute_timestamp = ?',
                         [userKey, currentMinuteTs],
-                        (err, row) => resolve(row ? row.requests : 0)
+                        (err, row) => {
+                            if (err) {
+                                console.error('Error getting minute count:', err);
+                                resolve(0);
+                            } else {
+                                resolve(row ? row.requests : 0);
+                            }
+                        }
                     );
                 });
 
@@ -756,7 +965,10 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
                  VALUES (?, ?, ?, 1) 
                  ON CONFLICT(api_key, date, minute_timestamp) 
                  DO UPDATE SET requests = requests + 1`,
-                [userKey, today, currentMinuteTs]
+                [userKey, today, currentMinuteTs],
+                (err) => {
+                    if (err) console.error('Error recording rate limit:', err);
+                }
             );
 
             // Construct Rate Limit Info Output
@@ -780,7 +992,10 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
         db.run(
             `INSERT INTO daily_calls (api_key, date, calls) VALUES (?, ?, 1)
              ON CONFLICT(api_key, date) DO UPDATE SET calls = calls + 1`,
-            [userKey, todayStr]
+            [userKey, todayStr],
+            (err) => {
+                if (err) console.error('Error recording daily calls:', err);
+            }
         );
 
         // Increase Hits Counter
@@ -788,7 +1003,9 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
 
         // Route Forwarding
         const proxyFn = apiProxyMap[endpoint];
-        if (!proxyFn) return res.status(404).json({ error: 'Unknown endpoint', contact: OWNER });
+        if (!proxyFn) {
+            return res.status(404).json({ error: 'Unknown endpoint', contact: OWNER });
+        }
 
         try {
             const params = { ...req.query, ...req.body };
@@ -806,12 +1023,24 @@ app.all('/api/:endpoint', globalLimiter, async (req, res) => {
 
             res.json(cleanedData);
         } catch (error) {
-            res.status(500).json({ error: 'Target API request failed', details: error.message });
+            console.error('API proxy error:', error);
+            res.status(500).json({ 
+                error: 'Target API request failed', 
+                details: error.message 
+            });
         }
-    });
+    } catch (error) {
+        console.error('Main API error:', error);
+        res.status(500).json({ 
+            error: 'Internal server error', 
+            details: error.message 
+        });
+    }
 });
 
-app.get('/health', (req, res) => { res.json({ status: 'ok' }); });
+app.get('/health', (req, res) => { 
+    res.json({ status: 'ok' }); 
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
