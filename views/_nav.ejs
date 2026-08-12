@@ -1,0 +1,78 @@
+<%
+const nav = [
+  { href: user && user.role === 'head_admin' ? '/head-admin/dashboard' : '/admin/dashboard', icon: 'fa-gauge-high', label: 'Dashboard', key: 'dashboard' },
+  { href: '/admin/analytics', icon: 'fa-chart-line', label: 'Analytics', key: 'analytics' },
+  { href: '/admin/login-history', icon: 'fa-clock-rotate-left', label: 'Login History', key: 'login-history' },
+  { href: '/endpoints', icon: 'fa-plug', label: 'Endpoints', key: 'endpoints' },
+  { href: '/docs', icon: 'fa-book', label: 'Docs', key: 'docs' },
+];
+if (user && user.role === 'head_admin') {
+  nav.splice(1, 0, { href: '/head-admin/dashboard', icon: 'fa-crown', label: 'Head Admin', key: 'head-admin' });
+}
+%>
+<nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#080c14]/90 backdrop-blur-xl">
+  <div class="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+    <a href="/" class="flex items-center gap-2.5 flex-shrink-0">
+      <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+        <i class="fa-solid fa-terminal text-white text-sm"></i>
+      </div>
+      <div class="hidden sm:block">
+        <span class="text-base font-extrabold tracking-tight text-white">OSINT <span class="text-cyan-400">HUB</span></span>
+        <span class="block text-[9px] font-mono text-gray-500 uppercase tracking-widest leading-none">Control Panel</span>
+      </div>
+    </a>
+
+    <div class="hidden lg:flex items-center gap-1">
+      <% nav.forEach(function(item){ %>
+        <a href="<%= item.href %>"
+           class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all
+                  <%= (typeof currentPage !== 'undefined' && currentPage === item.key)
+                      ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/25'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5' %>">
+          <i class="fa-solid <%= item.icon %> text-[11px]"></i>
+          <%= item.label %>
+        </a>
+      <% }); %>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-900 border border-gray-800 text-xs">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+        </span>
+        <span class="text-gray-300 font-mono"><%= user ? user.username : 'Admin' %></span>
+        <span class="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-bold uppercase border border-indigo-500/20 text-[9px]">
+          <%= user ? user.role.replace('_',' ') : '' %>
+        </span>
+      </div>
+      <a href="/logout" class="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium border border-red-500/20 transition flex items-center gap-1.5">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        <span class="hidden sm:inline">Logout</span>
+      </a>
+      <button onclick="toggleMobileMenu()" class="lg:hidden p-2 rounded-lg bg-gray-800 text-gray-300 hover:text-white">
+        <i class="fa-solid fa-bars text-sm"></i>
+      </button>
+    </div>
+  </div>
+
+  <div id="mobileMenu" class="hidden lg:hidden border-t border-white/5 bg-[#080c14]/95 backdrop-blur-xl">
+    <div class="px-4 py-3 flex flex-col gap-1">
+      <% nav.forEach(function(item){ %>
+        <a href="<%= item.href %>"
+           class="flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-medium transition
+                  <%= (typeof currentPage !== 'undefined' && currentPage === item.key)
+                      ? 'bg-cyan-500/15 text-cyan-400'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5' %>">
+          <i class="fa-solid <%= item.icon %> w-4 text-center"></i>
+          <%= item.label %>
+        </a>
+      <% }); %>
+    </div>
+  </div>
+</nav>
+<script>
+function toggleMobileMenu(){
+  document.getElementById('mobileMenu').classList.toggle('hidden');
+}
+</script>
