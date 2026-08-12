@@ -1,151 +1,96 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login - OSINT API Hub</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: linear-gradient(135deg, #0a0a2a, #1a1a3a);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            font-family: 'Segoe UI', 'Poppins', monospace;
-        }
-
-        .login-container {
-            background: rgba(0, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(0, 255, 255, 0.3);
-            border-radius: 30px;
-            padding: 2.5rem;
-            width: 400px;
-            box-shadow: 0 0 50px rgba(0, 255, 255, 0.1);
-            transition: 0.3s;
-        }
-
-        .login-container:hover {
-            box-shadow: 0 0 70px rgba(0, 255, 255, 0.2);
-        }
-
-        h2 {
-            text-align: center;
-            color: #00ffcc;
-            margin-bottom: 1.5rem;
-            font-size: 2rem;
-            text-shadow: 0 0 10px #00ffcc;
-        }
-
-        .input-group {
-            margin-bottom: 1.5rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #00ffcc;
-            font-weight: 500;
-        }
-
-        input {
-            width: 100%;
-            padding: 0.8rem;
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(0, 255, 255, 0.3);
-            color: #00ffcc;
-            border-radius: 12px;
-            font-size: 1rem;
-            transition: 0.3s;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #00ffcc;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
-        }
-
-        input::placeholder {
-            color: rgba(0, 255, 255, 0.4);
-        }
-
-        button {
-            width: 100%;
-            padding: 0.8rem;
-            background: linear-gradient(135deg, #00ffcc22, #0099ff22);
-            border: 1px solid #00ffcc;
-            color: #00ffcc;
-            font-weight: bold;
-            border-radius: 30px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: 0.3s;
-        }
-
-        button:hover {
-            background: #00ffcc;
-            color: #000;
-            box-shadow: 0 0 20px #00ffcc;
-        }
-
-        .error-msg {
-            background: rgba(255, 0, 0, 0.2);
-            border: 1px solid #ff4444;
-            border-radius: 10px;
-            padding: 0.75rem;
-            margin-bottom: 1rem;
-            text-align: center;
-            color: #ff8888;
-            font-size: 0.9rem;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 1.5rem;
-            font-size: 0.8rem;
-            color: rgba(0, 255, 255, 0.5);
-        }
-
-        .footer a {
-            color: #00ffcc;
-            text-decoration: none;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — OSINT API Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { background:#060a10; font-family:'Plus Jakarta Sans',sans-serif; }
+    .glass { background:rgba(255,255,255,0.03); backdrop-filter:blur(24px); border:1px solid rgba(255,255,255,0.07); }
+    .grid-bg {
+      background-image: linear-gradient(rgba(6,182,212,0.03) 1px,transparent 1px),
+                        linear-gradient(90deg,rgba(6,182,212,0.03) 1px,transparent 1px);
+      background-size:40px 40px;
+    }
+    @keyframes float{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-20px) scale(1.05);}}
+    @keyframes scanline{0%{top:-5%;}100%{top:105%;}}
+    .orb{animation:float 8s ease-in-out infinite;}
+    .orb2{animation:float 10s ease-in-out infinite reverse;}
+    .scanline{animation:scanline 4s linear infinite;}
+    input:-webkit-autofill{-webkit-box-shadow:0 0 0 30px #0d1420 inset !important;-webkit-text-fill-color:#e2e8f0 !important;}
+  </style>
 </head>
-<body>
-    <div class="login-container">
-        <h2>🔐 Admin Login</h2>
-        
-        <% if (error) { %>
-        <div class="error-msg">
-            <% if (error === 'invalid') { %>❌ Invalid username or password
-            <% } else if (error === 'missing') { %>❌ Please enter both username and password
-            <% } else { %>❌ Login failed. Please try again
-            <% } %>
-        </div>
-        <% } %>
-        
-        <form method="POST" action="/login">
-            <div class="input-group">
-                <label>📧 Username</label>
-                <input type="text" name="username" placeholder="Enter your username" required autofocus>
-            </div>
-            <div class="input-group">
-                <label>🔒 Password</label>
-                <input type="password" name="password" placeholder="Enter your password" required>
-            </div>
-            <button type="submit">🚀 Login</button>
-        </form>
-        
-        <div class="footer">
-            <p>🔐 OSINT API Hub | <a href="/">Home</a></p>
-        </div>
+<body class="min-h-screen flex items-center justify-center grid-bg relative overflow-hidden">
+  <div class="orb absolute top-[-80px] left-[-80px] w-[400px] h-[400px] rounded-full bg-cyan-500/10 blur-3xl pointer-events-none"></div>
+  <div class="orb2 absolute bottom-[-80px] right-[-80px] w-[350px] h-[350px] rounded-full bg-indigo-600/10 blur-3xl pointer-events-none"></div>
+  <div class="scanline absolute left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent pointer-events-none"></div>
+
+  <div class="relative z-10 w-full max-w-md px-4">
+    <div class="text-center mb-8">
+      <div class="inline-flex h-16 w-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-indigo-600 items-center justify-center shadow-2xl shadow-cyan-500/30 mb-4">
+        <i class="fa-solid fa-terminal text-white text-2xl"></i>
+      </div>
+      <h1 class="text-2xl font-extrabold text-white tracking-tight">OSINT <span class="text-cyan-400">HUB</span></h1>
+      <p class="text-xs text-gray-500 font-mono mt-1 uppercase tracking-widest">Secure Admin Portal</p>
     </div>
+
+    <div class="glass rounded-3xl p-8" style="box-shadow:0 0 40px rgba(6,182,212,0.15),0 0 80px rgba(6,182,212,0.05)">
+      <h2 class="text-lg font-bold text-white mb-1">Welcome back</h2>
+      <p class="text-xs text-gray-500 mb-6">Sign in to your admin account</p>
+
+      <% if (error) { %>
+      <div class="flex items-center gap-3 bg-red-500/10 border border-red-500/25 rounded-xl px-4 py-3 mb-5">
+        <i class="fa-solid fa-triangle-exclamation text-red-400 text-sm"></i>
+        <span class="text-sm text-red-300">
+          <% if (error === 'invalid') { %>Invalid username or password
+          <% } else if (error === 'missing') { %>Please enter both fields
+          <% } else { %>Login failed. Try again<% } %>
+        </span>
+      </div>
+      <% } %>
+
+      <form method="POST" action="/login" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">Username</label>
+          <div class="relative">
+            <i class="fa-solid fa-user absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600 text-xs"></i>
+            <input type="text" name="username" required autofocus placeholder="Enter username"
+              class="w-full bg-[#0d1420] border border-gray-800 focus:border-cyan-500/60 focus:ring-2 focus:ring-cyan-500/10 rounded-xl pl-10 pr-4 py-3 text-sm text-gray-200 placeholder-gray-600 outline-none transition">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">Password</label>
+          <div class="relative">
+            <i class="fa-solid fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600 text-xs"></i>
+            <input type="password" name="password" id="pwdInput" required placeholder="Enter password"
+              class="w-full bg-[#0d1420] border border-gray-800 focus:border-cyan-500/60 focus:ring-2 focus:ring-cyan-500/10 rounded-xl pl-10 pr-10 py-3 text-sm text-gray-200 placeholder-gray-600 outline-none transition">
+            <button type="button" onclick="togglePwd()" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-300 transition">
+              <i class="fa-solid fa-eye text-xs" id="pwdIcon"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit"
+          class="w-full mt-2 py-3 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-right-to-bracket"></i> Sign In
+        </button>
+      </form>
+
+      <div class="mt-6 pt-5 border-t border-white/5 text-center">
+        <a href="/" class="text-xs text-gray-600 hover:text-gray-400 transition inline-flex items-center gap-1.5">
+          <i class="fa-solid fa-arrow-left text-[10px]"></i> Back to Home
+        </a>
+      </div>
+    </div>
+  </div>
+  <script>
+    function togglePwd(){
+      const i=document.getElementById('pwdInput'),ic=document.getElementById('pwdIcon');
+      if(i.type==='password'){i.type='text';ic.className='fa-solid fa-eye-slash text-xs';}
+      else{i.type='password';ic.className='fa-solid fa-eye text-xs';}
+    }
+  </script>
 </body>
 </html>
