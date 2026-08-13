@@ -475,7 +475,8 @@ app.get('/admin/analytics', requireAuth, async (req, res) => {
             topEndpoints   : topEndpoints  || [],
             topIPs         : topIPs        || [],
             recentLogs     : recentLogs    || [],
-            ipEndpointRows : ipEndpointRows|| [],
+            ipEndpointRows  : ipEndpointRows || [],
+            requestSources  : ipEndpointRows || [],
             user   : req.session.user,
             owner  : OWNER,
             channel: CHANNEL
