@@ -107,6 +107,17 @@ db.serialize(() => {
     // Auto-migrate schema: Add custom_message if missing
     db.run(`ALTER TABLE available_apis ADD COLUMN custom_message TEXT DEFAULT 'API is currently turned off.'`, () => {});
 
+    // Login history table
+    db.run(`CREATE TABLE IF NOT EXISTS login_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT,
+        role TEXT DEFAULT 'unknown',
+        ip_address TEXT,
+        user_agent TEXT,
+        status TEXT DEFAULT 'success',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`, (err) => { if (err) console.error('Error creating login_history table:', err); });
+
     db.run(`CREATE TABLE IF NOT EXISTS settings (
         id INTEGER PRIMARY KEY,
         maintenance_message TEXT DEFAULT 'API is currently under maintenance.'
@@ -402,17 +413,31 @@ app.get('/login', (req, res) => {
 
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
-    if (!username || !password) return res.redirect('/login?error=missing');
+    const ip = req.ip || req.connection.remoteAddress;
+    const ua = req.headers['user-agent'] || '';
+
+    if (!username || !password) {
+        db.run(`INSERT INTO login_history (username, ip_address, user_agent, status) VALUES (?, ?, ?, ?)`,
+            [username || null, ip, ua, 'failed_missing']);
+        return res.redirect('/login?error=missing');
+    }
 
     db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
-        if (err || !user) return res.redirect('/login?error=invalid');
+        if (err || !user) {
+            db.run(`INSERT INTO login_history (username, ip_address, user_agent, status) VALUES (?, ?, ?, ?)`,
+                [username, ip, ua, 'failed_invalid']);
+            return res.redirect('/login?error=invalid');
+        }
         try {
             const match = await bcrypt.compare(password, user.password);
             if (match) {
                 req.session.user = { id: user.id, username: user.username, role: user.role };
-                // FIX: head_admin goes directly to head-admin dashboard, not circular redirect
+                db.run(`INSERT INTO login_history (username, role, ip_address, user_agent, status) VALUES (?, ?, ?, ?, ?)`,
+                    [user.username, user.role, ip, ua, 'success']);
                 return res.redirect(user.role === 'head_admin' ? '/head-admin/dashboard' : '/admin/dashboard');
             }
+            db.run(`INSERT INTO login_history (username, ip_address, user_agent, status) VALUES (?, ?, ?, ?)`,
+                [username, ip, ua, 'failed_wrong_pass']);
             return res.redirect('/login?error=invalid');
         } catch (error) {
             console.error('Login error:', error);
@@ -744,6 +769,69 @@ app.post('/admin/update-settings', requireAuth, (req, res) => {
 });
 
 // ============ HEAD ADMIN: CREATE USER ============
+// ============ ANALYTICS ROUTE ============
+app.get('/admin/analytics', requireAuth, (req, res) => {
+    db.get(`SELECT
+                COUNT(*) as total,
+                COUNT(DISTINCT ip_address) as unique_ips,
+                COUNT(DISTINCT endpoint) as unique_endpoints
+            FROM analytics`, [], (err, totals) => {
+        if (err) { console.error('Analytics totals error:', err); return res.status(500).send('Database error'); }
+
+        db.all(`SELECT endpoint, COUNT(*) as total FROM analytics GROUP BY endpoint ORDER BY total DESC LIMIT 10`, [], (err, topEndpoints) => {
+            if (err) { console.error('Top endpoints error:', err); return res.status(500).send('Database error'); }
+
+            db.all(`SELECT ip_address, COUNT(*) as hits FROM analytics GROUP BY ip_address ORDER BY hits DESC LIMIT 10`, [], (err, topIPs) => {
+                if (err) { console.error('Top IPs error:', err); return res.status(500).send('Database error'); }
+
+                db.all(`SELECT ip_address, endpoint, status_code, date FROM analytics ORDER BY id DESC LIMIT 100`, [], (err, recentLogs) => {
+                    if (err) { console.error('Recent logs error:', err); return res.status(500).send('Database error'); }
+
+                    // ip+endpoint combos for the middle table
+                    db.all(`SELECT ip_address, endpoint, COUNT(*) as hits FROM analytics GROUP BY ip_address, endpoint ORDER BY hits DESC LIMIT 20`, [], (err, ipEndpointRows) => {
+                        if (err) { console.error('ip+endpoint error:', err); return res.status(500).send('Database error'); }
+
+                        res.render('analytics', {
+                            totals: totals || { total: 0, unique_ips: 0, unique_endpoints: 0 },
+                            topEndpoints: topEndpoints || [],
+                            topIPs: topIPs || [],
+                            recentLogs: recentLogs || [],
+                            ipEndpointRows: ipEndpointRows || [],
+                            user: req.session.user,
+                            owner: OWNER,
+                            channel: CHANNEL
+                        });
+                    });
+                });
+            });
+        });
+    });
+});
+
+// ============ LOGIN HISTORY ROUTE ============
+app.get('/admin/login-history', requireAuth, (req, res) => {
+    db.all(`SELECT * FROM login_history ORDER BY created_at DESC LIMIT 200`, [], (err, logs) => {
+        if (err) { console.error('Login history error:', err); return res.status(500).send('Database error'); }
+
+        const successCount = (logs || []).filter(l => l.status === 'success').length;
+        const failCount = (logs || []).filter(l => l.status !== 'success').length;
+
+        db.all(`SELECT ip_address, COUNT(*) as attempts FROM login_history WHERE status != 'success' GROUP BY ip_address ORDER BY attempts DESC LIMIT 10`, [], (err, topFailedIPs) => {
+            if (err) { console.error('Top failed IPs error:', err); return res.status(500).send('Database error'); }
+
+            res.render('login_history', {
+                logs: logs || [],
+                successCount,
+                failCount,
+                topFailedIPs: topFailedIPs || [],
+                user: req.session.user,
+                owner: OWNER,
+                channel: CHANNEL
+            });
+        });
+    });
+});
+
 app.post('/head-admin/create-user', requireHeadAdmin, async (req, res) => {
     const { username, password, role } = req.body;
     if (!username || !password || !role) {
