@@ -459,12 +459,14 @@ app.get('/head-admin/dashboard', requireHeadAdmin, async (req, res) => {
 // ─── ANALYTICS ────────────────────────────────────────────────────────────────
 app.get('/admin/analytics', requireAuth, async (req, res) => {
     try {
-        const [allRows, topEndpoints, topIPs, recentLogs, ipEndpointRows] = await Promise.all([
+        const [allRows, topEndpoints, topIPs, recentLogs, ipEndpointRows, dailyVolume, hourlyDist] = await Promise.all([
             dbAll('SELECT ip_address, endpoint FROM analytics'),
             dbAll('SELECT endpoint, COUNT(*) as total FROM analytics GROUP BY endpoint ORDER BY total DESC LIMIT 10'),
             dbAll('SELECT ip_address, COUNT(*) as hits FROM analytics GROUP BY ip_address ORDER BY hits DESC LIMIT 10'),
             dbAll('SELECT ip_address, endpoint, status_code, date FROM analytics ORDER BY id DESC LIMIT 100'),
-            dbAll('SELECT ip_address, endpoint, COUNT(*) as hits FROM analytics GROUP BY ip_address, endpoint ORDER BY hits DESC LIMIT 20')
+            dbAll('SELECT ip_address, endpoint, COUNT(*) as hits FROM analytics GROUP BY ip_address, endpoint ORDER BY hits DESC LIMIT 20'),
+            dbAll('SELECT date, COUNT(*) as total FROM analytics GROUP BY date ORDER BY date DESC LIMIT 7'),
+            dbAll("SELECT strftime('%H', created_at) as hour, COUNT(*) as total FROM analytics GROUP BY hour ORDER BY hour")
         ]);
         res.render('analytics', {
             totals: {
@@ -472,12 +474,14 @@ app.get('/admin/analytics', requireAuth, async (req, res) => {
                 unique_ips       : new Set(allRows.map(r => r.ip_address)).size,
                 unique_endpoints : new Set(allRows.map(r => r.endpoint)).size
             },
-            topEndpoints   : topEndpoints  || [],
-            topIPs         : topIPs        || [],
-            recentLogs     : recentLogs    || [],
+            topEndpoints    : topEndpoints  || [],
+            topIPs          : topIPs        || [],
+            recentLogs      : recentLogs    || [],
             ipEndpointRows  : ipEndpointRows || [],
             requestSources  : ipEndpointRows || [],
-            recentRequests  : recentLogs || [],
+            recentRequests  : recentLogs    || [],
+            dailyVolume     : (dailyVolume || []).reverse(),
+            hourlyDist      : hourlyDist    || [],
             user   : req.session.user,
             owner  : OWNER,
             channel: CHANNEL
