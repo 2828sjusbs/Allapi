@@ -404,7 +404,7 @@ app.get('/admin/dashboard', requireAuth, async (req, res) => {
             dbGet('SELECT * FROM settings WHERE id = 1'),
             dbAll('SELECT date, SUM(calls) as total_calls FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7'),
             dbAll('SELECT date, SUM(calls) as total FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7'),
-            dbAll('SELECT endpoint, COUNT(*) as hits FROM daily_calls GROUP BY endpoint ORDER BY hits DESC LIMIT 5')
+            dbAll('SELECT endpoint, COUNT(*) as hits FROM analytics GROUP BY endpoint ORDER BY hits DESC LIMIT 5')
         ]);
         res.render('dashboard', {
             keys       : keys || [],
@@ -436,7 +436,7 @@ app.get('/head-admin/dashboard', requireHeadAdmin, async (req, res) => {
             dbGet('SELECT * FROM settings WHERE id = 1'),
             dbAll('SELECT date, SUM(calls) as total_calls FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7'),
             dbAll('SELECT date, SUM(calls) as total FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7'),
-            dbAll('SELECT endpoint, COUNT(*) as hits FROM daily_calls GROUP BY endpoint ORDER BY hits DESC LIMIT 5')
+            dbAll('SELECT endpoint, COUNT(*) as hits FROM analytics GROUP BY endpoint ORDER BY hits DESC LIMIT 5')
         ]);
         res.render('head_admin_dashboard', {
             keys      : keys || [],
