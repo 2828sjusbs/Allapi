@@ -452,85 +452,83 @@ app.get('/logout', (req, res) => {
 });
 
 // ============ ADMIN DASHBOARD ============
-app.get('/admin/dashboard', requireAuth, (req, res) => {
-    // FIX: head_admin was redirected here then immediately back → infinite loop
-    // Now head_admin stays here and renders dashboard (they have all admin perms)
-    db.all('SELECT * FROM api_keys ORDER BY created_at DESC', [], (err, keys) => {
-        if (err) { console.error('Error fetching keys:', err); return res.status(500).send('Database error'); }
-        db.get('SELECT COALESCE(SUM(hits), 0) as total FROM api_keys', [], (err, hits) => {
-            if (err) { console.error('Error fetching hits:', err); return res.status(500).send('Database error'); }
-            db.get('SELECT COUNT(*) as active FROM api_keys WHERE status="active"', [], (err, active) => {
-                if (err) { console.error('Error fetching active keys:', err); return res.status(500).send('Database error'); }
-                db.all('SELECT * FROM available_apis', [], (err, apis) => {
-                    if (err) { console.error('Error fetching APIs:', err); return res.status(500).send('Database error'); }
-                    db.get('SELECT * FROM settings WHERE id = 1', [], (err, settings) => {
-                        if (err) { console.error('Error fetching settings:', err); return res.status(500).send('Database error'); }
-                        db.all(`SELECT date, SUM(calls) as total_calls FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7`, [], (err, chartRows) => {
-                            if (err) { console.error('Error fetching chart data:', err); return res.status(500).send('Database error'); }
-                            const chartData = (chartRows || []).reverse();
-                            const formattedApis = (apis || []).map(api => {
-                                let params = {};
-                                try { params = JSON.parse(api.required_params || '{}'); } catch(e) { params = {}; }
-                                return { ...api, param_name: Object.keys(params)[0] || 'param' };
-                            });
-                            res.render('dashboard', {
-                                keys: keys || [],
-                                totalHits: hits ? hits.total : 0,
-                                active: active ? active.active : 0,
-                                apis: formattedApis,
-                                chartData,
-                                user: req.session.user,
-                                baseUrl: req.protocol + '://' + req.get('host'),
-                                settings: settings || { maintenance_message: 'API is currently under maintenance.' },
-                                owner: OWNER,
-                                channel: CHANNEL
-                            });
-                        });
-                    });
-                });
-            });
+// Helper: promisify db queries
+const dbGet  = (sql, params=[]) => new Promise((res, rej) => db.get(sql, params, (e, r) => e ? rej(e) : res(r)));
+const dbAll  = (sql, params=[]) => new Promise((res, rej) => db.all(sql, params, (e, r) => e ? rej(e) : res(r)));
+
+app.get('/admin/dashboard', requireAuth, async (req, res) => {
+    try {
+        const [keys, apis, settings, chartRows] = await Promise.all([
+            dbAll('SELECT * FROM api_keys ORDER BY created_at DESC'),
+            dbAll('SELECT * FROM available_apis'),
+            dbGet('SELECT * FROM settings WHERE id = 1'),
+            dbAll('SELECT date, SUM(calls) as total_calls FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7')
+        ]);
+
+        // FIX: COUNT() aggregate crash — calculate from already-fetched keys array instead
+        const totalHits  = keys.reduce((sum, k) => sum + (k.hits || 0), 0);
+        const activeCount = keys.filter(k => k.status === 'active').length;
+        const chartData  = (chartRows || []).reverse();
+
+        const formattedApis = (apis || []).map(api => {
+            let params = {};
+            try { params = JSON.parse(api.required_params || '{}'); } catch(e) {}
+            return { ...api, param_name: Object.keys(params)[0] || 'param' };
         });
-    });
+
+        res.render('dashboard', {
+            keys: keys || [],
+            totalHits,
+            active: activeCount,
+            apis: formattedApis,
+            chartData,
+            user: req.session.user,
+            baseUrl: req.protocol + '://' + req.get('host'),
+            settings: settings || { maintenance_message: 'API is currently under maintenance.' },
+            owner: OWNER,
+            channel: CHANNEL
+        });
+    } catch (err) {
+        console.error('Dashboard error:', err);
+        res.status(500).send('Database error: ' + err.message);
+    }
 });
 
-// FIX: head-admin dashboard — renders head_admin_dashboard view directly, no more circular redirect
-app.get('/head-admin/dashboard', requireHeadAdmin, (req, res) => {
-    db.all('SELECT * FROM api_keys ORDER BY created_at DESC', [], (err, keys) => {
-        if (err) { console.error('Error fetching keys:', err); return res.status(500).send('Database error'); }
-        db.all('SELECT * FROM users ORDER BY created_at DESC', [], (err, users) => {
-            if (err) { console.error('Error fetching users:', err); return res.status(500).send('Database error'); }
-            db.get('SELECT COALESCE(SUM(hits), 0) as total FROM api_keys', [], (err, hits) => {
-                if (err) { console.error('Error fetching hits:', err); return res.status(500).send('Database error'); }
-                db.all('SELECT * FROM available_apis', [], (err, apis) => {
-                    if (err) { console.error('Error fetching APIs:', err); return res.status(500).send('Database error'); }
-                    db.get('SELECT * FROM settings WHERE id = 1', [], (err, settings) => {
-                        if (err) { console.error('Error fetching settings:', err); return res.status(500).send('Database error'); }
-                        db.all(`SELECT date, SUM(calls) as total_calls FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7`, [], (err, chartRows) => {
-                            if (err) { console.error('Error fetching chart data:', err); return res.status(500).send('Database error'); }
-                            const chartData = (chartRows || []).reverse();
-                            const formattedApis = (apis || []).map(api => {
-                                let params = {};
-                                try { params = JSON.parse(api.required_params || '{}'); } catch(e) { params = {}; }
-                                return { ...api, param_name: Object.keys(params)[0] || 'param' };
-                            });
-                            res.render('head_admin_dashboard', {
-                                keys: keys || [],
-                                users: users || [],
-                                totalHits: hits ? hits.total : 0,
-                                apis: formattedApis,
-                                chartData,
-                                user: req.session.user,
-                                baseUrl: req.protocol + '://' + req.get('host'),
-                                settings: settings || { maintenance_message: 'API is currently under maintenance.' },
-                                owner: OWNER,
-                                channel: CHANNEL
-                            });
-                        });
-                    });
-                });
-            });
+app.get('/head-admin/dashboard', requireHeadAdmin, async (req, res) => {
+    try {
+        const [keys, users, apis, settings, chartRows] = await Promise.all([
+            dbAll('SELECT * FROM api_keys ORDER BY created_at DESC'),
+            dbAll('SELECT * FROM users ORDER BY created_at DESC'),
+            dbAll('SELECT * FROM available_apis'),
+            dbGet('SELECT * FROM settings WHERE id = 1'),
+            dbAll('SELECT date, SUM(calls) as total_calls FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7')
+        ]);
+
+        const totalHits = keys.reduce((sum, k) => sum + (k.hits || 0), 0);
+        const chartData = (chartRows || []).reverse();
+
+        const formattedApis = (apis || []).map(api => {
+            let params = {};
+            try { params = JSON.parse(api.required_params || '{}'); } catch(e) {}
+            return { ...api, param_name: Object.keys(params)[0] || 'param' };
         });
-    });
+
+        res.render('head_admin_dashboard', {
+            keys: keys || [],
+            users: users || [],
+            totalHits,
+            apis: formattedApis,
+            chartData,
+            user: req.session.user,
+            baseUrl: req.protocol + '://' + req.get('host'),
+            settings: settings || { maintenance_message: 'API is currently under maintenance.' },
+            owner: OWNER,
+            channel: CHANNEL
+        });
+    } catch (err) {
+        console.error('Head admin dashboard error:', err);
+        res.status(500).send('Database error: ' + err.message);
+    }
 });
 
 // ============ GENERATE KEY ============
@@ -770,66 +768,63 @@ app.post('/admin/update-settings', requireAuth, (req, res) => {
 
 // ============ HEAD ADMIN: CREATE USER ============
 // ============ ANALYTICS ROUTE ============
-app.get('/admin/analytics', requireAuth, (req, res) => {
-    db.get(`SELECT
-                COUNT(*) as total,
-                COUNT(DISTINCT ip_address) as unique_ips,
-                COUNT(DISTINCT endpoint) as unique_endpoints
-            FROM analytics`, [], (err, totals) => {
-        if (err) { console.error('Analytics totals error:', err); return res.status(500).send('Database error'); }
+app.get('/admin/analytics', requireAuth, async (req, res) => {
+    try {
+        const [allRows, topEndpoints, topIPs, recentLogs, ipEndpointRows] = await Promise.all([
+            dbAll('SELECT * FROM analytics'),
+            dbAll('SELECT endpoint, COUNT(*) as total FROM analytics GROUP BY endpoint ORDER BY total DESC LIMIT 10'),
+            dbAll('SELECT ip_address, COUNT(*) as hits FROM analytics GROUP BY ip_address ORDER BY hits DESC LIMIT 10'),
+            dbAll('SELECT ip_address, endpoint, status_code, date FROM analytics ORDER BY id DESC LIMIT 100'),
+            dbAll('SELECT ip_address, endpoint, COUNT(*) as hits FROM analytics GROUP BY ip_address, endpoint ORDER BY hits DESC LIMIT 20')
+        ]);
 
-        db.all(`SELECT endpoint, COUNT(*) as total FROM analytics GROUP BY endpoint ORDER BY total DESC LIMIT 10`, [], (err, topEndpoints) => {
-            if (err) { console.error('Top endpoints error:', err); return res.status(500).send('Database error'); }
+        // Build totals from JS — avoid COUNT() aggregate issues
+        const totals = {
+            total: allRows.length,
+            unique_ips: new Set(allRows.map(r => r.ip_address)).size,
+            unique_endpoints: new Set(allRows.map(r => r.endpoint)).size
+        };
 
-            db.all(`SELECT ip_address, COUNT(*) as hits FROM analytics GROUP BY ip_address ORDER BY hits DESC LIMIT 10`, [], (err, topIPs) => {
-                if (err) { console.error('Top IPs error:', err); return res.status(500).send('Database error'); }
-
-                db.all(`SELECT ip_address, endpoint, status_code, date FROM analytics ORDER BY id DESC LIMIT 100`, [], (err, recentLogs) => {
-                    if (err) { console.error('Recent logs error:', err); return res.status(500).send('Database error'); }
-
-                    // ip+endpoint combos for the middle table
-                    db.all(`SELECT ip_address, endpoint, COUNT(*) as hits FROM analytics GROUP BY ip_address, endpoint ORDER BY hits DESC LIMIT 20`, [], (err, ipEndpointRows) => {
-                        if (err) { console.error('ip+endpoint error:', err); return res.status(500).send('Database error'); }
-
-                        res.render('analytics', {
-                            totals: totals || { total: 0, unique_ips: 0, unique_endpoints: 0 },
-                            topEndpoints: topEndpoints || [],
-                            topIPs: topIPs || [],
-                            recentLogs: recentLogs || [],
-                            ipEndpointRows: ipEndpointRows || [],
-                            user: req.session.user,
-                            owner: OWNER,
-                            channel: CHANNEL
-                        });
-                    });
-                });
-            });
+        res.render('analytics', {
+            totals,
+            topEndpoints: topEndpoints || [],
+            topIPs: topIPs || [],
+            recentLogs: recentLogs || [],
+            ipEndpointRows: ipEndpointRows || [],
+            user: req.session.user,
+            owner: OWNER,
+            channel: CHANNEL
         });
-    });
+    } catch (err) {
+        console.error('Analytics error:', err);
+        res.status(500).send('Database error: ' + err.message);
+    }
 });
 
 // ============ LOGIN HISTORY ROUTE ============
-app.get('/admin/login-history', requireAuth, (req, res) => {
-    db.all(`SELECT * FROM login_history ORDER BY created_at DESC LIMIT 200`, [], (err, logs) => {
-        if (err) { console.error('Login history error:', err); return res.status(500).send('Database error'); }
+app.get('/admin/login-history', requireAuth, async (req, res) => {
+    try {
+        const [logs, topFailedIPs] = await Promise.all([
+            dbAll('SELECT * FROM login_history ORDER BY created_at DESC LIMIT 200'),
+            dbAll(`SELECT ip_address, COUNT(*) as attempts FROM login_history WHERE status != 'success' GROUP BY ip_address ORDER BY attempts DESC LIMIT 10`)
+        ]);
 
         const successCount = (logs || []).filter(l => l.status === 'success').length;
-        const failCount = (logs || []).filter(l => l.status !== 'success').length;
+        const failCount    = (logs || []).filter(l => l.status !== 'success').length;
 
-        db.all(`SELECT ip_address, COUNT(*) as attempts FROM login_history WHERE status != 'success' GROUP BY ip_address ORDER BY attempts DESC LIMIT 10`, [], (err, topFailedIPs) => {
-            if (err) { console.error('Top failed IPs error:', err); return res.status(500).send('Database error'); }
-
-            res.render('login_history', {
-                logs: logs || [],
-                successCount,
-                failCount,
-                topFailedIPs: topFailedIPs || [],
-                user: req.session.user,
-                owner: OWNER,
-                channel: CHANNEL
-            });
+        res.render('login_history', {
+            logs: logs || [],
+            successCount,
+            failCount,
+            topFailedIPs: topFailedIPs || [],
+            user: req.session.user,
+            owner: OWNER,
+            channel: CHANNEL
         });
-    });
+    } catch (err) {
+        console.error('Login history error:', err);
+        res.status(500).send('Database error: ' + err.message);
+    }
 });
 
 app.post('/head-admin/create-user', requireHeadAdmin, async (req, res) => {
