@@ -398,18 +398,22 @@ app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/'); });
 // ─── ADMIN DASHBOARD ──────────────────────────────────────────────────────────
 app.get('/admin/dashboard', requireAuth, async (req, res) => {
     try {
-        const [keys, apis, settings, chartRows] = await Promise.all([
+        const [keys, apis, settings, chartRows, dailyVolume, topEndpoints] = await Promise.all([
             dbAll('SELECT * FROM api_keys ORDER BY created_at DESC'),
             dbAll('SELECT * FROM available_apis'),
             dbGet('SELECT * FROM settings WHERE id = 1'),
-            dbAll('SELECT date, SUM(calls) as total_calls FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7')
+            dbAll('SELECT date, SUM(calls) as total_calls FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7'),
+            dbAll('SELECT date, SUM(calls) as total FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7'),
+            dbAll('SELECT endpoint, COUNT(*) as hits FROM daily_calls GROUP BY endpoint ORDER BY hits DESC LIMIT 5')
         ]);
         res.render('dashboard', {
             keys       : keys || [],
             totalHits  : keys.reduce((s, k) => s + (k.hits || 0), 0),
             active     : keys.filter(k => k.status === 'active').length,
             apis       : formatApis(apis || []),
-            chartData  : (chartRows || []).reverse(),
+            chartData    : (chartRows || []).reverse(),
+            dailyVolume  : (dailyVolume || []).reverse(),
+            topEndpoints : topEndpoints || [],
             user       : req.session.user,
             baseUrl    : req.protocol + '://' + req.get('host'),
             settings   : settings || { maintenance_message: 'API is currently under maintenance.' },
@@ -430,7 +434,9 @@ app.get('/head-admin/dashboard', requireHeadAdmin, async (req, res) => {
             dbAll('SELECT * FROM users ORDER BY created_at DESC'),
             dbAll('SELECT * FROM available_apis'),
             dbGet('SELECT * FROM settings WHERE id = 1'),
-            dbAll('SELECT date, SUM(calls) as total_calls FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7')
+            dbAll('SELECT date, SUM(calls) as total_calls FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7'),
+            dbAll('SELECT date, SUM(calls) as total FROM daily_calls GROUP BY date ORDER BY date DESC LIMIT 7'),
+            dbAll('SELECT endpoint, COUNT(*) as hits FROM daily_calls GROUP BY endpoint ORDER BY hits DESC LIMIT 5')
         ]);
         res.render('head_admin_dashboard', {
             keys      : keys || [],
