@@ -175,11 +175,21 @@
               </td>
               <td class="py-3.5 px-4">
                 <div class="flex items-center justify-end gap-1.5">
-                  <button onclick="openEditModal('<%- JSON.stringify(key).replace(/\\/g,'\\\\').replace(/'/g,\"\\'\\'\") %>')" class="p-1.5 rounded-lg bg-gray-800 hover:bg-indigo-500/20 text-gray-400 hover:text-indigo-400 transition" title="Edit"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
-                  <form action="/admin/toggle-status" method="POST" class="inline">
-                    <input type="hidden" name="id" value="<%= key.id %>"><input type="hidden" name="status" value="<%= key.status %>">
-                    <button type="submit" class="p-1.5 rounded-lg bg-gray-800 hover:bg-amber-500/20 text-gray-400 hover:text-amber-400 transition" title="Toggle"><i class="fa-solid fa-power-off text-xs"></i></button>
-                  </form>
+                  <button
+                    onclick="openEditModal(this)"
+                    data-id="<%= key.id %>"
+                    data-name="<%= encodeURIComponent(key.name||'') %>"
+                    data-enabled="<%= key.api_enabled %>"
+                    data-unlimited="<%= key.unlimited_hits %>"
+                    data-allowed="<%= encodeURIComponent(key.allowed_apis||'') %>"
+                    data-rl-enabled="<%= key.rate_limit_enabled %>"
+                    data-rl-day="<%= key.rate_limit_per_day %>"
+                    data-rl-min="<%= key.rate_limit_per_minute %>"
+                    data-note-enabled="<%= key.note_enabled %>"
+                    data-note="<%= encodeURIComponent(key.key_note||'') %>"
+                    class="p-1.5 rounded-lg bg-gray-800 hover:bg-indigo-500/20 text-gray-400 hover:text-indigo-400 transition" title="Edit">
+                    <i class="fa-solid fa-pen-to-square text-xs"></i>
+                  </button>
                   <form action="/admin/delete-key" method="POST" class="inline" onsubmit="return confirm('Delete this key permanently?')">
                     <input type="hidden" name="id" value="<%= key.id %>">
                     <button type="submit" class="p-1.5 rounded-lg bg-gray-800 hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition" title="Delete"><i class="fa-solid fa-trash-can text-xs"></i></button>
@@ -199,7 +209,7 @@
 
 <!-- GENERATE MODAL -->
 <div id="generateModal" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-  <div class="glass w-full max-w-lg rounded-2xl border border-white/8 shadow-2xl my-8">
+  <div class="glass w-full max-w-lg rounded-2xl shadow-2xl my-8" style="border:1px solid rgba(255,255,255,0.08)">
     <div class="p-5 border-b border-white/5 flex items-center justify-between">
       <h3 class="text-sm font-bold text-white flex items-center gap-2"><i class="fa-solid fa-key text-cyan-400"></i> Generate New API Key</h3>
       <button onclick="closeModal('generateModal')" class="text-gray-500 hover:text-white text-xl leading-none">&times;</button>
@@ -218,8 +228,8 @@
       </div>
       <div>
         <label class="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wider">Allowed Endpoint</label>
-        <select name="selected_api" class="w-full bg-[#0d1420] border border-gray-800 rounded-xl px-4 py-2.5 text-xs text-gray-200 outline-none">
-          <option value="all">⚡ All Endpoints (Full Access)</option>
+        <select name="selected_apis" class="w-full bg-[#0d1420] border border-gray-800 rounded-xl px-4 py-2.5 text-xs text-gray-200 outline-none">
+          <option value="all">All Endpoints (Full Access)</option>
           <% apis.forEach(function(api){%><option value="<%= api.name %>"><%= api.display_name %> (<%= api.endpoint %>)</option><%});%>
         </select>
       </div>
@@ -241,15 +251,14 @@
         <div><label class="block text-[11px] text-gray-500 mb-1">Expiry Date</label><input type="date" name="custom_expiry_date" class="w-full bg-[#0d1420] border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-200 outline-none"></div>
         <div><label class="block text-[11px] text-gray-500 mb-1">Expiry Time</label><input type="time" name="custom_expiry_time" value="23:59" class="w-full bg-[#0d1420] border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-200 outline-none"></div>
       </div>
-      <div class="p-3 bg-gray-900/50 border border-gray-800 rounded-xl space-y-3">
-        <div class="flex items-center justify-between">
-          <label class="text-xs font-semibold text-gray-400">Enable Rate Limits</label>
-          <input type="checkbox" name="rate_limit_enabled" checked class="rounded">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] text-gray-600 mb-1">Daily Limit</label>
+          <input type="number" name="rate_limit_per_day" value="100" class="w-full bg-[#070b11] border border-gray-800 rounded-lg p-1.5 text-center text-gray-200 outline-none text-xs">
         </div>
-        <div class="grid grid-cols-3 gap-2 text-xs">
-          <div><span class="text-[10px] text-gray-600">Daily</span><input type="number" name="rate_limit_per_day" value="100" class="w-full bg-[#070b11] border border-gray-800 rounded-lg p-1.5 text-center text-gray-200 outline-none"></div>
-          <div><span class="text-[10px] text-gray-600">Hourly</span><input type="number" name="rate_limit_per_hour" value="20" class="w-full bg-[#070b11] border border-gray-800 rounded-lg p-1.5 text-center text-gray-200 outline-none"></div>
-          <div><span class="text-[10px] text-gray-600">Per Min</span><input type="number" name="rate_limit_per_minute" value="5" class="w-full bg-[#070b11] border border-gray-800 rounded-lg p-1.5 text-center text-gray-200 outline-none"></div>
+        <div>
+          <label class="block text-[10px] text-gray-600 mb-1">Per Minute</label>
+          <input type="number" name="rate_limit_per_minute" value="5" class="w-full bg-[#070b11] border border-gray-800 rounded-lg p-1.5 text-center text-gray-200 outline-none text-xs">
         </div>
       </div>
       <div class="space-y-2">
@@ -266,7 +275,7 @@
 
 <!-- EDIT MODAL -->
 <div id="editModal" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-  <div class="glass w-full max-w-lg rounded-2xl border border-white/8 shadow-2xl my-8">
+  <div class="glass w-full max-w-lg rounded-2xl shadow-2xl my-8" style="border:1px solid rgba(255,255,255,0.08)">
     <div class="p-5 border-b border-white/5 flex items-center justify-between">
       <h3 class="text-sm font-bold text-white flex items-center gap-2"><i class="fa-solid fa-sliders text-cyan-400"></i> Edit Key Settings</h3>
       <button onclick="closeModal('editModal')" class="text-gray-500 hover:text-white text-xl leading-none">&times;</button>
@@ -279,14 +288,14 @@
       </div>
       <div>
         <label class="block text-xs font-semibold text-gray-400 mb-1">Allowed Endpoint</label>
-        <select id="edit_selected_api" name="selected_api" class="w-full bg-[#0d1420] border border-gray-800 rounded-xl px-4 py-2.5 text-xs text-gray-200 outline-none">
-          <option value="all">⚡ All Endpoints</option>
+        <select id="edit_selected_api" name="selected_apis" class="w-full bg-[#0d1420] border border-gray-800 rounded-xl px-4 py-2.5 text-xs text-gray-200 outline-none">
+          <option value="all">All Endpoints</option>
           <% apis.forEach(function(api){%><option value="<%= api.name %>"><%= api.display_name %></option><%});%>
         </select>
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block text-xs font-semibold text-gray-400 mb-1">Status</label>
+          <label class="block text-xs font-semibold text-gray-400 mb-1">Key Status</label>
           <select id="edit_api_enabled" name="api_enabled" class="w-full bg-[#0d1420] border border-gray-800 rounded-xl px-3 py-2.5 text-xs text-gray-200 outline-none">
             <option value="1">Enabled</option><option value="0">Disabled</option>
           </select>
@@ -298,22 +307,18 @@
           </select>
         </div>
       </div>
-      <div class="p-3 bg-gray-900/50 border border-gray-800 rounded-xl space-y-3">
-        <div class="flex items-center justify-between">
-          <label class="text-xs font-semibold text-gray-400">Rate Limits</label>
-          <input type="checkbox" id="edit_rate_limit_enabled" name="rate_limit_enabled" class="rounded">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] text-gray-600 mb-1">Daily Limit</label>
+          <input type="number" id="edit_rate_limit_per_day" name="rate_limit_per_day" class="w-full bg-[#070b11] border border-gray-800 rounded-lg p-1.5 text-center text-gray-200 outline-none text-xs">
         </div>
-        <div class="grid grid-cols-3 gap-2 text-xs">
-          <div><span class="text-[10px] text-gray-600">Daily</span><input type="number" id="edit_rate_limit_per_day" name="rate_limit_per_day" class="w-full bg-[#070b11] border border-gray-800 rounded-lg p-1.5 text-center text-gray-200 outline-none"></div>
-          <div><span class="text-[10px] text-gray-600">Hourly</span><input type="number" id="edit_rate_limit_per_hour" name="rate_limit_per_hour" class="w-full bg-[#070b11] border border-gray-800 rounded-lg p-1.5 text-center text-gray-200 outline-none"></div>
-          <div><span class="text-[10px] text-gray-600">Per Min</span><input type="number" id="edit_rate_limit_per_minute" name="rate_limit_per_minute" class="w-full bg-[#070b11] border border-gray-800 rounded-lg p-1.5 text-center text-gray-200 outline-none"></div>
+        <div>
+          <label class="block text-[10px] text-gray-600 mb-1">Per Minute</label>
+          <input type="number" id="edit_rate_limit_per_minute" name="rate_limit_per_minute" class="w-full bg-[#070b11] border border-gray-800 rounded-lg p-1.5 text-center text-gray-200 outline-none text-xs">
         </div>
       </div>
       <div class="space-y-2">
-        <div class="flex items-center justify-between">
-          <label class="text-xs font-semibold text-gray-400">Note</label>
-          <input type="checkbox" id="edit_note_enabled" name="note_enabled" class="rounded">
-        </div>
+        <label class="block text-xs font-semibold text-gray-400">Note</label>
         <input type="text" id="edit_key_note" name="key_note" placeholder="Note..." class="w-full bg-[#0d1420] border border-gray-800 rounded-xl px-4 py-2 text-xs text-gray-200 outline-none">
       </div>
       <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition">Update Key</button>
@@ -327,40 +332,42 @@
 </div>
 
 <script>
-const dailyVolumeData = <%- JSON.stringify(dailyVolume||[]) %>;
-const topEndpointsData = <%- JSON.stringify(topEndpoints||[]) %>;
+var dailyVolumeData  = <%- JSON.stringify(dailyVolume  || []) %>;
+var topEndpointsData = <%- JSON.stringify(topEndpoints || []) %>;
 
-new Chart(document.getElementById('dailyChart'),{type:'line',data:{labels:dailyVolumeData.map(d=>d.date),datasets:[{label:'Requests',data:dailyVolumeData.map(d=>d.total),borderColor:'#06b6d4',backgroundColor:'rgba(6,182,212,0.08)',tension:0.4,fill:true,pointRadius:4,pointBackgroundColor:'#06b6d4',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7280',font:{size:10}},grid:{color:'rgba(255,255,255,0.03)'}},y:{ticks:{color:'#6b7280',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+new Chart(document.getElementById('dailyChart'),{type:'line',data:{labels:dailyVolumeData.map(function(d){return d.date;}),datasets:[{label:'Requests',data:dailyVolumeData.map(function(d){return d.total;}),borderColor:'#06b6d4',backgroundColor:'rgba(6,182,212,0.08)',tension:0.4,fill:true,pointRadius:4,pointBackgroundColor:'#06b6d4',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7280',font:{size:10}},grid:{color:'rgba(255,255,255,0.03)'}},y:{ticks:{color:'#6b7280',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}}}});
 
-new Chart(document.getElementById('endpointsChart'),{type:'bar',data:{labels:topEndpointsData.map(d=>d.endpoint),datasets:[{label:'Hits',data:topEndpointsData.map(d=>d.hits),backgroundColor:['rgba(99,102,241,0.7)','rgba(6,182,212,0.7)','rgba(16,185,129,0.7)','rgba(245,158,11,0.7)','rgba(239,68,68,0.7)'],borderRadius:6,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7280',font:{size:10}},grid:{color:'rgba(255,255,255,0.03)'}},y:{ticks:{color:'#6b7280',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+new Chart(document.getElementById('endpointsChart'),{type:'bar',data:{labels:topEndpointsData.map(function(d){return d.endpoint;}),datasets:[{label:'Hits',data:topEndpointsData.map(function(d){return d.hits;}),backgroundColor:['rgba(99,102,241,0.7)','rgba(6,182,212,0.7)','rgba(16,185,129,0.7)','rgba(245,158,11,0.7)','rgba(239,68,68,0.7)'],borderRadius:6,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7280',font:{size:10}},grid:{color:'rgba(255,255,255,0.03)'}},y:{ticks:{color:'#6b7280',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}}}});
 
 function openModal(id){document.getElementById(id).classList.remove('hidden');}
 function closeModal(id){document.getElementById(id).classList.add('hidden');}
-function toggleCustomExpiry(v){const c=document.getElementById('customExpiryContainer');v==='custom'?c.classList.remove('hidden'):c.classList.add('hidden');}
-function copyKey(text){navigator.clipboard.writeText(text).then(()=>{document.getElementById('toastMsg').textContent='Key copied!';const t=document.getElementById('toast');t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),2000);});}
-function filterKeys(){const val=document.getElementById('searchInput').value.toUpperCase();document.getElementById('keysTable').querySelectorAll('tbody tr').forEach(tr=>{tr.style.display=tr.textContent.toUpperCase().includes(val)?'':'none';});}
-function openEditModal(str){
-  const key=JSON.parse(str);
-  document.getElementById('edit_key_id').value=key.id;
-  document.getElementById('edit_name').value=key.name||'';
-  document.getElementById('edit_api_enabled').value=key.api_enabled!==undefined?key.api_enabled:1;
-  document.getElementById('edit_unlimited_hits').value=key.unlimited_hits?'true':'false';
-  try{let a=JSON.parse(key.allowed_apis);document.getElementById('edit_selected_api').value=(Array.isArray(a)&&a.length>0)?a[0]:'all';}catch(e){document.getElementById('edit_selected_api').value='all';}
-  document.getElementById('edit_rate_limit_enabled').checked=key.rate_limit_enabled===1;
-  document.getElementById('edit_rate_limit_per_day').value=key.rate_limit_per_day||100;
-  document.getElementById('edit_rate_limit_per_hour').value=key.rate_limit_per_hour||20;
-  document.getElementById('edit_rate_limit_per_minute').value=key.rate_limit_per_minute||5;
-  document.getElementById('edit_note_enabled').checked=key.note_enabled===1;
-  document.getElementById('edit_key_note').value=key.key_note||'';
+function toggleCustomExpiry(v){var c=document.getElementById('customExpiryContainer');v==='custom'?c.classList.remove('hidden'):c.classList.add('hidden');}
+function copyKey(text){navigator.clipboard.writeText(text).then(function(){document.getElementById('toastMsg').textContent='Key copied!';var t=document.getElementById('toast');t.classList.remove('hidden');setTimeout(function(){t.classList.add('hidden');},2000);});}
+function filterKeys(){var val=document.getElementById('searchInput').value.toUpperCase();document.getElementById('keysTable').querySelectorAll('tbody tr').forEach(function(tr){tr.style.display=tr.textContent.toUpperCase().includes(val)?'':'none';});}
+
+function openEditModal(btn){
+  var d = btn.dataset;
+  document.getElementById('edit_key_id').value = d.id;
+  document.getElementById('edit_name').value = decodeURIComponent(d.name || '');
+  document.getElementById('edit_api_enabled').value = d.enabled !== undefined ? d.enabled : 1;
+  document.getElementById('edit_unlimited_hits').value = d.unlimited === '1' ? 'true' : 'false';
+  try {
+    var a = JSON.parse(decodeURIComponent(d.allowed || '["all"]'));
+    document.getElementById('edit_selected_api').value = (Array.isArray(a) && a.length > 0 && !a.includes('all')) ? a[0] : 'all';
+  } catch(e) { document.getElementById('edit_selected_api').value = 'all'; }
+  document.getElementById('edit_rate_limit_per_day').value = d.rlDay || 100;
+  document.getElementById('edit_rate_limit_per_minute').value = d.rlMin || 0;
+  document.getElementById('edit_key_note').value = decodeURIComponent(d.note || '');
   openModal('editModal');
 }
+
 async function submitEditKey(e){
   e.preventDefault();
-  const data=Object.fromEntries(new FormData(document.getElementById('editKeyForm')).entries());
-  const res=await fetch('/admin/edit-key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-  const result=await res.json();
-  if(result.success)window.location.reload();
-  else alert('Error: '+(result.error||'Failed'));
+  var data = Object.fromEntries(new FormData(document.getElementById('editKeyForm')).entries());
+  var res = await fetch('/admin/edit-key', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  var result = await res.json();
+  if(result.success) window.location.reload();
+  else alert('Error: ' + (result.error || 'Failed'));
 }
 </script>
 </body>
